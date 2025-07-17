@@ -108,18 +108,13 @@ internal class Program
             }
 
             // CLI options override model configuration settings
-            var effectiveApiKey = options.ApiKey ?? defaultModelConfig.ApiKey ?? Environment.GetEnvironmentVariable("AI_API_KEY");
-            var effectiveBaseUrl = options.BaseUrl ?? defaultModelConfig.BaseUrl;
             var effectiveModel = options.Model != "gpt-3.5-turbo" ? options.Model : defaultModelConfig.Model;
             var effectiveTemperature = options.Temperature != 1.0f ? options.Temperature : defaultModelConfig.Temperature;
             var effectiveMaxTokens = options.MaxTokens ?? defaultModelConfig.MaxTokens;
             var effectiveFormat = options.Format != "text" ? options.Format : defaultModelConfig.Format;
             var effectiveStream = options.Stream != false ? options.Stream : defaultModelConfig.Stream;
 
-
             // Update CLI options with effective values
-            options.ApiKey = effectiveApiKey;
-            options.BaseUrl = effectiveBaseUrl;
             options.Model = effectiveModel;
             options.Temperature = effectiveTemperature;
             options.MaxTokens = effectiveMaxTokens;

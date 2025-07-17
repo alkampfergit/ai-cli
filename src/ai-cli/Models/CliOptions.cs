@@ -51,16 +51,6 @@ public class CliOptions
     public bool Stream { get; set; }
 
     /// <summary>
-    /// API key override
-    /// </summary>
-    public string? ApiKey { get; set; }
-
-    /// <summary>
-    /// Base URL for the API
-    /// </summary>
-    public string? BaseUrl { get; set; }
-
-    /// <summary>
     /// Whether to enter configuration mode
     /// </summary>
     public bool Config { get; set; }

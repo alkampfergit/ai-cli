@@ -92,8 +92,6 @@ public class CommandLineBuilderTests
         options.OutputFile.Should().Be("output.txt");
         options.Format.Should().Be("json");
         options.Stream.Should().BeTrue();
-        options.ApiKey.Should().Be("test-key");
-        options.BaseUrl.Should().Be("https://api.example.com");
     }
 
     [Fact]

@@ -55,14 +55,6 @@ public static class CommandLineBuilder
             name: "--stream",
             description: "Stream response tokens as they arrive");
 
-        // API configuration options
-        var apiKeyOption = new Option<string?>(
-            name: "--api-key",
-            description: "API key (overrides AI_API_KEY environment variable)");
-
-        var baseUrlOption = new Option<string?>(
-            name: "--base-url",
-            description: "Base URL for the API endpoint");
 
         var configOption = new Option<bool>(
             name: "--config",
@@ -80,8 +72,6 @@ public static class CommandLineBuilder
         rootCommand.AddOption(outputFileOption);
         rootCommand.AddOption(formatOption);
         rootCommand.AddOption(streamOption);
-        rootCommand.AddOption(apiKeyOption);
-        rootCommand.AddOption(baseUrlOption);
         rootCommand.AddOption(configOption);
 
         // Add validation
@@ -145,8 +135,6 @@ public static class CommandLineBuilder
         var outputFileValue = GetOptionValue<string>(result, "--output-file", "-o");
         var formatValue = GetOptionValue<string>(result, "--format") ?? "text";
         var streamValue = GetOptionValue<bool?>(result, "--stream") ?? false;
-        var apiKeyValue = GetOptionValue<string>(result, "--api-key");
-        var baseUrlValue = GetOptionValue<string>(result, "--base-url");
         var configValue = GetOptionValue<bool>(result, "--config");
 
         return new CliOptions
@@ -161,8 +149,6 @@ public static class CommandLineBuilder
             OutputFile = outputFileValue,
             Format = formatValue!,
             Stream = streamValue,
-            ApiKey = apiKeyValue,
-            BaseUrl = baseUrlValue,
             Config = configValue
         };
     }
