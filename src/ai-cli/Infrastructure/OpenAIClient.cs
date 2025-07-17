@@ -156,7 +156,6 @@ public class OpenAIClient : IAIClient
             },
             temperature = request.Temperature,
             max_tokens = request.MaxTokens,
-            top_p = request.TopP,
             stream = request.Stream
         };
 

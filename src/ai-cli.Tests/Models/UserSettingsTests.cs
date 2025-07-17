@@ -175,7 +175,6 @@ public class ModelConfigurationTests
         config.Model.Should().Be("gpt-3.5-turbo");
         config.Temperature.Should().Be(1.0f);
         config.MaxTokens.Should().BeNull();
-        config.TopP.Should().BeNull();
         config.Format.Should().Be("text");
         config.Stream.Should().BeFalse();
     }
@@ -194,7 +193,6 @@ public class ModelConfigurationTests
         config.Model.Should().Be("gpt-3.5-turbo");
         config.Temperature.Should().Be(1.0f);
         config.MaxTokens.Should().BeNull();
-        config.TopP.Should().BeNull();
         config.Format.Should().Be("text");
         config.Stream.Should().BeFalse();
     }
@@ -213,7 +211,6 @@ public class ModelConfigurationTests
         config.Model = "gpt-4";
         config.Temperature = 0.7f;
         config.MaxTokens = 100;
-        config.TopP = 0.9f;
         config.Format = "json";
         config.Stream = true;
 
@@ -225,7 +222,6 @@ public class ModelConfigurationTests
         config.Model.Should().Be("gpt-4");
         config.Temperature.Should().Be(0.7f);
         config.MaxTokens.Should().Be(100);
-        config.TopP.Should().Be(0.9f);
         config.Format.Should().Be("json");
         config.Stream.Should().BeTrue();
     }

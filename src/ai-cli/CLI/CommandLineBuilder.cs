@@ -40,9 +40,6 @@ public static class CommandLineBuilder
             name: "--max-tokens",
             description: "Maximum number of tokens to generate");
 
-        var topPOption = new Option<float?>(
-            name: "--top-p",
-            description: "Top-p sampling parameter (0.0 to 1.0)");
 
         // Output options
         var outputFileOption = new Option<string?>(
@@ -80,7 +77,6 @@ public static class CommandLineBuilder
         rootCommand.AddOption(modelOption);
         rootCommand.AddOption(temperatureOption);
         rootCommand.AddOption(maxTokensOption);
-        rootCommand.AddOption(topPOption);
         rootCommand.AddOption(outputFileOption);
         rootCommand.AddOption(formatOption);
         rootCommand.AddOption(streamOption);
@@ -91,9 +87,8 @@ public static class CommandLineBuilder
         // Add validation
         rootCommand.AddValidator(result =>
         {
-            // Check if --config flag is present
-            var tokens = result.Tokens.Select(t => t.Value).ToList();
-            var isConfigMode = tokens.Contains("--config");
+            // Check if --config flag is present using the proper System.CommandLine method
+            var isConfigMode = result.GetValueForOption(configOption);
             
             // Skip validation if in config mode
             if (isConfigMode)
@@ -125,11 +120,6 @@ public static class CommandLineBuilder
                 result.ErrorMessage = "Temperature must be between 0.0 and 2.0";
             }
 
-            var topP = result.GetValueForOption(topPOption);
-            if (topP.HasValue && (topP < 0.0f || topP > 1.0f))
-            {
-                result.ErrorMessage = "Top-p must be between 0.0 and 1.0";
-            }
 
             var format = result.GetValueForOption(formatOption);
             if (format != "text" && format != "json")
@@ -154,7 +144,6 @@ public static class CommandLineBuilder
         var modelValue = GetOptionValue<string>(result, "--model", "-m") ?? "gpt-3.5-turbo";
         var temperatureValue = GetOptionValue<float?>(result, "--temperature") ?? 1.0f;
         var maxTokensValue = GetOptionValue<int?>(result, "--max-tokens");
-        var topPValue = GetOptionValue<float?>(result, "--top-p");
         var outputFileValue = GetOptionValue<string>(result, "--output-file", "-o");
         var formatValue = GetOptionValue<string>(result, "--format") ?? "text";
         var streamValue = GetOptionValue<bool?>(result, "--stream") ?? false;
@@ -172,7 +161,6 @@ public static class CommandLineBuilder
             Model = modelValue!,
             Temperature = temperatureValue,
             MaxTokens = maxTokensValue,
-            TopP = topPValue,
             OutputFile = outputFileValue,
             Format = formatValue!,
             Stream = streamValue,

@@ -44,11 +44,6 @@ public class ModelConfiguration
     public int? MaxTokens { get; set; }
 
     /// <summary>
-    /// Default top-p sampling parameter
-    /// </summary>
-    public float? TopP { get; set; }
-
-    /// <summary>
     /// Default output format
     /// </summary>
     public string Format { get; set; } = "text";
@@ -72,7 +67,6 @@ public class ModelConfiguration
             Model = "gpt-3.5-turbo",
             Temperature = 1.0f,
             MaxTokens = null,
-            TopP = null,
             Format = "text",
             Stream = false
         };
@@ -108,7 +102,6 @@ public class UserSettings
         {
             ModelConfigurations = new List<ModelConfiguration>
             {
-                ModelConfiguration.CreateDefault()
             },
             DefaultModelConfigurationId = "default",
             RefreshInterval = 30

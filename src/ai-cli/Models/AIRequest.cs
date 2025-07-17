@@ -26,11 +26,6 @@ public record AIRequest
     public int? MaxTokens { get; init; }
 
     /// <summary>
-    /// Nucleus sampling parameter (0.0 to 1.0)
-    /// </summary>
-    public float? TopP { get; init; }
-
-    /// <summary>
     /// Whether to stream the response
     /// </summary>
     public bool Stream { get; init; }

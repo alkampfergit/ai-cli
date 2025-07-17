@@ -113,20 +113,6 @@ public class ConfigurationService
             maxTokens = parsedMaxTokens;
         }
 
-        var topPInput = await AnsiConsole.AskAsync<string>("Enter [green]top-p[/] (0.0-1.0, or press Enter for default):");
-        float? topP = null;
-        if (!string.IsNullOrWhiteSpace(topPInput) && float.TryParse(topPInput, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedTopP))
-        {
-            if (parsedTopP >= 0.0f && parsedTopP <= 1.0f)
-            {
-                topP = parsedTopP;
-            }
-            else
-            {
-                AnsiConsole.MarkupLine("[red]Top-p must be between 0.0 and 1.0. Using default value.[/]");
-            }
-        }
-
         var format = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("Select output [green]format[/]:")
@@ -145,7 +131,6 @@ public class ConfigurationService
             Model = model,
             Temperature = temperature,
             MaxTokens = maxTokens,
-            TopP = topP,
             Format = format,
             Stream = stream
         };

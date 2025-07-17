@@ -113,7 +113,6 @@ internal class Program
             var effectiveModel = options.Model != "gpt-3.5-turbo" ? options.Model : defaultModelConfig.Model;
             var effectiveTemperature = options.Temperature != 1.0f ? options.Temperature : defaultModelConfig.Temperature;
             var effectiveMaxTokens = options.MaxTokens ?? defaultModelConfig.MaxTokens;
-            var effectiveTopP = options.TopP ?? defaultModelConfig.TopP;
             var effectiveFormat = options.Format != "text" ? options.Format : defaultModelConfig.Format;
             var effectiveStream = options.Stream != false ? options.Stream : defaultModelConfig.Stream;
             
@@ -130,7 +129,6 @@ internal class Program
             options.Model = effectiveModel;
             options.Temperature = effectiveTemperature;
             options.MaxTokens = effectiveMaxTokens;
-            options.TopP = effectiveTopP;
             options.Format = effectiveFormat;
             options.Stream = effectiveStream;
 

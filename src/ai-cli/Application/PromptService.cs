@@ -27,19 +27,18 @@ public class PromptService : IPromptService
     public async Task<AIResponse> ProcessPromptAsync(CliOptions options, CancellationToken cancellationToken = default)
     {
         var prompt = await GetPromptTextAsync(options, cancellationToken);
-        
+
         var request = new AIRequest
         {
             Prompt = prompt,
             Model = options.Model,
             Temperature = options.Temperature,
             MaxTokens = options.MaxTokens,
-            TopP = options.TopP,
             Stream = false
         };
 
         _logger.LogInformation("Processing prompt with model {Model}", options.Model);
-        
+
         return await _aiClient.SendRequestAsync(request, cancellationToken);
     }
 
@@ -47,14 +46,13 @@ public class PromptService : IPromptService
     public async IAsyncEnumerable<string> ProcessStreamingPromptAsync(CliOptions options, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var prompt = await GetPromptTextAsync(options, cancellationToken);
-        
+
         var request = new AIRequest
         {
             Prompt = prompt,
             Model = options.Model,
             Temperature = options.Temperature,
             MaxTokens = options.MaxTokens,
-            TopP = options.TopP,
             Stream = true
         };
 

@@ -19,13 +19,13 @@ public class FileUserSettingsServiceTests : IDisposable
         _mockLogger = new Mock<ILogger<FileUserSettingsService>>();
         _mockEncryptionService = new Mock<IEncryptionService>();
         _tempSettingsPath = Path.GetTempFileName();
-        
+
         // Set up default encryption service behavior (generic for any encryption implementation)
         _mockEncryptionService.Setup(x => x.IsEncrypted(It.IsAny<string>())).Returns((string s) => s?.StartsWith("ENCRYPTED:") == true);
         _mockEncryptionService.Setup(x => x.Encrypt(It.IsAny<string>())).Returns<string>(s => string.IsNullOrEmpty(s) ? s : "ENCRYPTED:" + s);
-        _mockEncryptionService.Setup(x => x.Decrypt(It.IsAny<string>())).Returns<string>(s => 
+        _mockEncryptionService.Setup(x => x.Decrypt(It.IsAny<string>())).Returns<string>(s =>
             s?.StartsWith("ENCRYPTED:") == true ? s.Substring("ENCRYPTED:".Length) : (s ?? String.Empty));
-        
+
         _fileUserSettingsService = new FileUserSettingsService(_tempSettingsPath, _mockLogger.Object, _mockEncryptionService.Object);
     }
 
@@ -43,14 +43,13 @@ public class FileUserSettingsServiceTests : IDisposable
         settings.ModelConfigurations.Should().HaveCount(1);
         settings.DefaultModelConfigurationId.Should().Be("default");
         settings.RefreshInterval.Should().Be(30);
-        
+
         var defaultConfig = settings.ModelConfigurations.First();
         defaultConfig.ApiKey.Should().BeNull();
         defaultConfig.BaseUrl.Should().BeNull();
         defaultConfig.Model.Should().Be("gpt-3.5-turbo");
         defaultConfig.Temperature.Should().Be(1.0f);
         defaultConfig.MaxTokens.Should().BeNull();
-        defaultConfig.TopP.Should().BeNull();
         defaultConfig.Format.Should().Be("text");
         defaultConfig.Stream.Should().BeFalse();
     }
@@ -65,14 +64,13 @@ public class FileUserSettingsServiceTests : IDisposable
         settings.ModelConfigurations.Should().HaveCount(1);
         settings.DefaultModelConfigurationId.Should().Be("default");
         settings.RefreshInterval.Should().Be(30);
-        
+
         var defaultConfig = settings.ModelConfigurations.First();
         defaultConfig.ApiKey.Should().BeNull();
         defaultConfig.BaseUrl.Should().BeNull();
         defaultConfig.Model.Should().Be("gpt-3.5-turbo");
         defaultConfig.Temperature.Should().Be(1.0f);
         defaultConfig.MaxTokens.Should().BeNull();
-        defaultConfig.TopP.Should().BeNull();
         defaultConfig.Format.Should().Be("text");
         defaultConfig.Stream.Should().BeFalse();
 
@@ -97,7 +95,6 @@ public class FileUserSettingsServiceTests : IDisposable
                     Model = "gpt-4",
                     Temperature = 0.7f,
                     MaxTokens = 150,
-                    TopP = 0.8f,
                     Format = "json",
                     Stream = true
                 }
@@ -117,7 +114,6 @@ public class FileUserSettingsServiceTests : IDisposable
         content.Should().Contain("gpt-4");
         content.Should().Contain("0.7");
         content.Should().Contain("150");
-        content.Should().Contain("0.8");
         content.Should().Contain("json");
         content.Should().Contain("true");
         content.Should().Contain("45");
@@ -139,7 +135,6 @@ public class FileUserSettingsServiceTests : IDisposable
               "model": "gpt-4",
               "temperature": 0.6,
               "maxTokens": 200,
-              "topP": 0.9,
               "format": "json",
               "stream": true
             }
@@ -157,7 +152,7 @@ public class FileUserSettingsServiceTests : IDisposable
         settings.ModelConfigurations.Should().HaveCount(1);
         settings.DefaultModelConfigurationId.Should().Be("loaded-config");
         settings.RefreshInterval.Should().Be(60);
-        
+
         var config = settings.ModelConfigurations.First();
         config.Id.Should().Be("loaded-config");
         config.Name.Should().Be("Loaded Configuration");
@@ -166,7 +161,6 @@ public class FileUserSettingsServiceTests : IDisposable
         config.Model.Should().Be("gpt-4");
         config.Temperature.Should().Be(0.6f);
         config.MaxTokens.Should().Be(200);
-        config.TopP.Should().Be(0.9f);
         config.Format.Should().Be("json");
         config.Stream.Should().BeTrue();
     }
@@ -184,7 +178,7 @@ public class FileUserSettingsServiceTests : IDisposable
         settings.ModelConfigurations.Should().HaveCount(1);
         settings.DefaultModelConfigurationId.Should().Be("default");
         settings.RefreshInterval.Should().Be(30);
-        
+
         var defaultConfig = settings.ModelConfigurations.First();
         defaultConfig.Model.Should().Be("gpt-3.5-turbo");
         defaultConfig.Format.Should().Be("text");
@@ -203,7 +197,7 @@ public class FileUserSettingsServiceTests : IDisposable
         settings.ModelConfigurations.Should().HaveCount(1);
         settings.DefaultModelConfigurationId.Should().Be("default");
         settings.RefreshInterval.Should().Be(30);
-        
+
         var defaultConfig = settings.ModelConfigurations.First();
         defaultConfig.Model.Should().Be("gpt-3.5-turbo");
         defaultConfig.Format.Should().Be("text");
@@ -243,7 +237,6 @@ public class FileUserSettingsServiceTests : IDisposable
         config.Temperature.Should().Be(0.5f);
         config.BaseUrl.Should().BeNull(); // Default
         config.MaxTokens.Should().BeNull(); // Default
-        config.TopP.Should().BeNull(); // Default
         config.Format.Should().Be("text"); // Default
         config.Stream.Should().BeFalse(); // Default
     }
@@ -267,7 +260,7 @@ public class FileUserSettingsServiceTests : IDisposable
         // Assert
         settings.ModelConfigurations.Should().HaveCount(1);
         settings.DefaultModelConfigurationId.Should().Be("default");
-        
+
         var config = settings.ModelConfigurations.First();
         config.Id.Should().Be("default");
         config.Model.Should().Be("gpt-3.5-turbo");
@@ -298,7 +291,7 @@ public class FileUserSettingsServiceTests : IDisposable
         // Assert
         settings.ModelConfigurations.Should().HaveCount(1);
         settings.DefaultModelConfigurationId.Should().Be("valid-config");
-        
+
         var config = settings.ModelConfigurations.First();
         config.Id.Should().Be("valid-config");
     }
@@ -351,7 +344,7 @@ public class FileUserSettingsServiceTests : IDisposable
 
         // Assert
         _mockEncryptionService.Verify(x => x.Encrypt("secret-api-key-123"), Times.Once);
-        
+
         // Verify the file contains encrypted content
         var content = File.ReadAllText(_tempSettingsPath);
         content.Should().Contain("ENCRYPTED:secret-api-key-123");
@@ -387,7 +380,7 @@ public class FileUserSettingsServiceTests : IDisposable
 
         // Assert
         _mockEncryptionService.Verify(x => x.Decrypt("ENC:encrypted-secret-api-key-123"), Times.Once);
-        
+
         var config = settings.ModelConfigurations.First();
         config.ApiKey.Should().Be("secret-api-key-123");
     }
@@ -428,10 +421,10 @@ public class FileUserSettingsServiceTests : IDisposable
         // Assert
         _mockEncryptionService.Verify(x => x.Decrypt("ENC:encrypted-secret-api-key-123"), Times.Once);
         _mockEncryptionService.Verify(x => x.Decrypt("plain-api-key-456"), Times.Never);
-        
+
         var encryptedConfig = settings.ModelConfigurations.First(c => c.Id == "encrypted-config");
         var plainConfig = settings.ModelConfigurations.First(c => c.Id == "plain-config");
-        
+
         encryptedConfig.ApiKey.Should().Be("secret-api-key-123");
         plainConfig.ApiKey.Should().Be("plain-api-key-456");
     }

@@ -65,7 +65,6 @@ internal sealed class FileUserSettingsService : IUserSettingsService
             {
                 settings.ModelConfigurations = new List<ModelConfiguration>
                 {
-                    ModelConfiguration.CreateDefault()
                 };
             }
 

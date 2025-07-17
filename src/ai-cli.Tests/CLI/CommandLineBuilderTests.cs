@@ -16,13 +16,13 @@ public class CommandLineBuilderTests
         // Assert
         rootCommand.Should().NotBeNull();
         rootCommand.Description.Should().Be("AI CLI - Send prompts to OpenAI-compatible APIs");
-        rootCommand.Options.Should().HaveCount(11);
+        rootCommand.Options.Should().HaveCount(10);
         
         // Check that all expected options are present
         rootCommand.Options.Select(o => o.Name).Should().Contain(new[]
         {
             "prompt", "file", "model", "temperature", "max-tokens",
-            "top-p", "output-file", "format", "stream", "api-key", "base-url"
+            "output-file", "format", "stream", "api-key", "base-url"
         });
     }
 
@@ -73,7 +73,6 @@ public class CommandLineBuilderTests
             "--model", "gpt-4",
             "--temperature", "0.7",
             "--max-tokens", "100",
-            "--top-p", "0.9",
             "--output-file", "output.txt",
             "--format", "json",
             "--stream",
@@ -90,7 +89,6 @@ public class CommandLineBuilderTests
         options.Model.Should().Be("gpt-4");
         options.Temperature.Should().Be(0.7f);
         options.MaxTokens.Should().Be(100);
-        options.TopP.Should().Be(0.9f);
         options.OutputFile.Should().Be("output.txt");
         options.Format.Should().Be("json");
         options.Stream.Should().BeTrue();
@@ -113,22 +111,7 @@ public class CommandLineBuilderTests
         parseResult.Errors[0].Message.Should().Contain("Temperature must be between 0.0 and 2.0");
     }
 
-    [Fact]
-    public void CreateRootCommand_WithInvalidTopP_ShouldFail()
-    {
-        // Arrange
-        var rootCommand = CommandLineBuilder.CreateRootCommand();
-        var args = new[] { "--prompt", "Test", "--top-p", "1.5" };
-
-        // Act
-        var parseResult = rootCommand.Parse(args);
-
-        // Assert
-        parseResult.Errors.Should().HaveCount(1);
-        parseResult.Errors[0].Message.Should().Contain("Top-p must be between 0.0 and 1.0");
-    }
-
-    [Fact]
+[Fact]
     public void CreateRootCommand_WithInvalidFormat_ShouldFail()
     {
         // Arrange

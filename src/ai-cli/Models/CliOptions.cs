@@ -36,11 +36,6 @@ public class CliOptions
     public int? MaxTokens { get; set; }
 
     /// <summary>
-    /// Top-p sampling parameter
-    /// </summary>
-    public float? TopP { get; set; }
-
-    /// <summary>
     /// Output file path
     /// </summary>
     public string? OutputFile { get; set; }
