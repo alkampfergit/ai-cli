@@ -67,18 +67,36 @@ internal class Program
         {
             var options = CommandLineBuilder.ParseOptions(parseResult);
             
+            // Handle config mode
+            if (options.Config)
+            {
+                return await HandleConfigModeAsync(cancellationToken);
+            }
+            
             // Initialize user settings service
             var settingsPath = SettingsPathProvider.GetDefaultSettingsPath();
-            var settingsLogger = new ServiceCollection()
+            var tempServiceCollection = new ServiceCollection()
                 .AddLogging(builder =>
                 {
                     builder.ClearProviders();
                     builder.AddSerilog();
-                })
-                .BuildServiceProvider()
-                .GetRequiredService<ILogger<FileUserSettingsService>>();
+                });
             
-            var userSettingsService = new FileUserSettingsService(settingsPath, settingsLogger);
+            // Register platform-specific encryption service
+            if (OperatingSystem.IsWindows())
+            {
+                tempServiceCollection.AddSingleton<IEncryptionService, DpapiEncryptionService>();
+            }
+            else
+            {
+                tempServiceCollection.AddSingleton<IEncryptionService, AesEncryptionService>();
+            }
+            
+            var tempServiceProvider = tempServiceCollection.BuildServiceProvider();
+            var settingsLogger = tempServiceProvider.GetRequiredService<ILogger<FileUserSettingsService>>();
+            var encryptionService = tempServiceProvider.GetRequiredService<IEncryptionService>();
+            
+            var userSettingsService = new FileUserSettingsService(settingsPath, settingsLogger, encryptionService);
             var userSettings = userSettingsService.Load();
             
             // Get the default model configuration
@@ -166,6 +184,56 @@ internal class Program
     }
 
     /// <summary>
+    /// Handles configuration mode
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Exit code</returns>
+    private static async Task<int> HandleConfigModeAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Initialize user settings service
+            var settingsPath = SettingsPathProvider.GetDefaultSettingsPath();
+            var tempServiceCollection = new ServiceCollection()
+                .AddLogging(builder =>
+                {
+                    builder.ClearProviders();
+                    builder.AddSerilog();
+                });
+            
+            // Register platform-specific encryption service
+            if (OperatingSystem.IsWindows())
+            {
+                tempServiceCollection.AddSingleton<IEncryptionService, DpapiEncryptionService>();
+            }
+            else
+            {
+                tempServiceCollection.AddSingleton<IEncryptionService, AesEncryptionService>();
+            }
+            
+            var tempServiceProvider = tempServiceCollection.BuildServiceProvider();
+            var settingsLogger = tempServiceProvider.GetRequiredService<ILogger<FileUserSettingsService>>();
+            var encryptionService = tempServiceProvider.GetRequiredService<IEncryptionService>();
+            
+            var userSettingsService = new FileUserSettingsService(settingsPath, settingsLogger, encryptionService);
+            
+            // Create configuration service
+            var configLogger = tempServiceProvider.GetRequiredService<ILogger<ConfigurationService>>();
+            var configService = new ConfigurationService(userSettingsService, configLogger);
+            
+            // Start configuration menu
+            await configService.StartConfigurationAsync();
+            
+            return ExitCodes.Success;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Configuration error: {ex.Message}");
+            return ExitCodes.UnknownError;
+        }
+    }
+
+    /// <summary>
     /// Configures dependency injection services
     /// </summary>
     /// <param name="services">Service collection</param>
@@ -180,6 +248,16 @@ internal class Program
 
         // Register user settings service as singleton
         services.AddSingleton(userSettingsService);
+        
+        // Register platform-specific encryption service as singleton
+        if (OperatingSystem.IsWindows())
+        {
+            services.AddSingleton<IEncryptionService, DpapiEncryptionService>();
+        }
+        else
+        {
+            services.AddSingleton<IEncryptionService, AesEncryptionService>();
+        }
 
         services.AddHttpClient<IAIClient, OpenAIClient>()
             .ConfigureHttpClient(client =>

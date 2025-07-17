@@ -32,7 +32,7 @@ public class OpenAIClient : IAIClient
         _logger = logger;
         _apiKey = apiKey;
         _baseUrl = baseUrl ?? "https://api.openai.com/v1";
-        
+
         ConfigureHttpClient();
     }
 
@@ -51,7 +51,7 @@ public class OpenAIClient : IAIClient
             var httpContent = new StringContent(requestBody, Encoding.UTF8, "application/json");
 
             _logger.LogDebug("Sending request to OpenAI API");
-            
+
             var response = await _httpClient.PostAsync($"{_baseUrl}/chat/completions", httpContent, cancellationToken);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
@@ -105,7 +105,7 @@ public class OpenAIClient : IAIClient
         _logger.LogDebug("Sending streaming request to OpenAI API");
 
         using var response = await _httpClient.PostAsync($"{_baseUrl}/chat/completions", content, cancellationToken);
-        
+
         if (!response.IsSuccessStatusCode)
         {
             var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);

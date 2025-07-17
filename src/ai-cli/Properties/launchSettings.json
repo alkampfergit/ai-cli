@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ai-cli": {
+      "commandName": "Project",
+      "commandLineArgs": "--config true"
+    }
+  }
+}

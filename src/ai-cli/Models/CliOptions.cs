@@ -64,4 +64,9 @@ public class CliOptions
     /// Base URL for the API
     /// </summary>
     public string? BaseUrl { get; set; }
+
+    /// <summary>
+    /// Whether to enter configuration mode
+    /// </summary>
+    public bool Config { get; set; }
 }

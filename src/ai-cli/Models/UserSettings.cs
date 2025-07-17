@@ -1,3 +1,5 @@
+using AiCli.Attributes;
+
 namespace AiCli.Models;
 
 /// <summary>
@@ -18,6 +20,7 @@ public class ModelConfiguration
     /// <summary>
     /// API key for the AI service
     /// </summary>
+    [EncryptedSetting]
     public string? ApiKey { get; set; }
 
     /// <summary>

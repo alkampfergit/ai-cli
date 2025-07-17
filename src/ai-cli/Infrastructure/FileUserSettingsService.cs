@@ -1,6 +1,8 @@
 using AiCli.Application;
+using AiCli.Attributes;
 using AiCli.Models;
 using Microsoft.Extensions.Logging;
+using System.Reflection;
 using System.Text.Json;
 
 namespace AiCli.Infrastructure;
@@ -12,6 +14,7 @@ internal sealed class FileUserSettingsService : IUserSettingsService
 {
     private readonly string _settingsFilePath;
     private readonly ILogger<FileUserSettingsService> _logger;
+    private readonly IEncryptionService _encryptionService;
     private readonly JsonSerializerOptions _jsonOptions;
 
     /// <summary>
@@ -19,10 +22,12 @@ internal sealed class FileUserSettingsService : IUserSettingsService
     /// </summary>
     /// <param name="settingsFilePath">Path to the settings file</param>
     /// <param name="logger">Logger instance</param>
-    public FileUserSettingsService(string settingsFilePath, ILogger<FileUserSettingsService> logger)
+    /// <param name="encryptionService">Encryption service for sensitive properties</param>
+    public FileUserSettingsService(string settingsFilePath, ILogger<FileUserSettingsService> logger, IEncryptionService encryptionService)
     {
         _settingsFilePath = settingsFilePath;
         _logger = logger;
+        _encryptionService = encryptionService;
         _jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
@@ -80,6 +85,9 @@ internal sealed class FileUserSettingsService : IUserSettingsService
                 settings.DefaultModelConfigurationId = settings.ModelConfigurations.First().Id;
             }
 
+            // Decrypt encrypted properties
+            DecryptEncryptedProperties(settings);
+
             _logger.LogInformation("Settings loaded successfully from {FilePath}", _settingsFilePath);
             return settings;
         }
@@ -108,7 +116,11 @@ internal sealed class FileUserSettingsService : IUserSettingsService
                 _logger.LogInformation("Created settings directory: {Directory}", directory);
             }
 
-            var json = JsonSerializer.Serialize(settings, _jsonOptions);
+            // Create a copy for serialization and encrypt sensitive properties
+            var settingsToSave = CloneSettings(settings);
+            EncryptEncryptedProperties(settingsToSave);
+
+            var json = JsonSerializer.Serialize(settingsToSave, _jsonOptions);
             File.WriteAllText(_settingsFilePath, json);
 
             // Set restrictive permissions on Unix systems
@@ -140,5 +152,101 @@ internal sealed class FileUserSettingsService : IUserSettingsService
         Save(defaultSettings);
         _logger.LogInformation("Settings reset to default values and saved");
         return defaultSettings;
+    }
+
+    /// <summary>
+    /// Creates a deep copy of the settings for serialization
+    /// </summary>
+    private UserSettings CloneSettings(UserSettings settings)
+    {
+        // Simple JSON-based cloning
+        var json = JsonSerializer.Serialize(settings, _jsonOptions);
+        return JsonSerializer.Deserialize<UserSettings>(json, _jsonOptions)!;
+    }
+
+    /// <summary>
+    /// Encrypts properties marked with EncryptedSetting attribute
+    /// </summary>
+    private void EncryptEncryptedProperties(UserSettings settings)
+    {
+        foreach (var modelConfig in settings.ModelConfigurations)
+        {
+            EncryptEncryptedProperties(modelConfig);
+        }
+    }
+
+    /// <summary>
+    /// Encrypts properties marked with EncryptedSetting attribute on an object
+    /// </summary>
+    private void EncryptEncryptedProperties(object obj)
+    {
+        if (obj == null) return;
+
+        var type = obj.GetType();
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+        foreach (var property in properties)
+        {
+            var encryptedAttribute = property.GetCustomAttribute<EncryptedSettingAttribute>();
+            if (encryptedAttribute != null && property.PropertyType == typeof(string))
+            {
+                var value = (string?)property.GetValue(obj);
+                if (!string.IsNullOrEmpty(value) && !_encryptionService.IsEncrypted(value))
+                {
+                    try
+                    {
+                        var encryptedValue = _encryptionService.Encrypt(value);
+                        property.SetValue(obj, encryptedValue);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to encrypt property {PropertyName}", property.Name);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Decrypts properties marked with EncryptedSetting attribute
+    /// </summary>
+    private void DecryptEncryptedProperties(UserSettings settings)
+    {
+        foreach (var modelConfig in settings.ModelConfigurations)
+        {
+            DecryptEncryptedProperties(modelConfig);
+        }
+    }
+
+    /// <summary>
+    /// Decrypts properties marked with EncryptedSetting attribute on an object
+    /// </summary>
+    private void DecryptEncryptedProperties(object obj)
+    {
+        if (obj == null) return;
+
+        var type = obj.GetType();
+        var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+        foreach (var property in properties)
+        {
+            var encryptedAttribute = property.GetCustomAttribute<EncryptedSettingAttribute>();
+            if (encryptedAttribute != null && property.PropertyType == typeof(string))
+            {
+                var value = (string?)property.GetValue(obj);
+                if (!string.IsNullOrEmpty(value) && _encryptionService.IsEncrypted(value))
+                {
+                    try
+                    {
+                        var decryptedValue = _encryptionService.Decrypt(value);
+                        property.SetValue(obj, decryptedValue);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to decrypt property {PropertyName}", property.Name);
+                    }
+                }
+            }
+        }
     }
 }

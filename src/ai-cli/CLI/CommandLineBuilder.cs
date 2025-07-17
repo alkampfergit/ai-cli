@@ -67,6 +67,13 @@ public static class CommandLineBuilder
             name: "--base-url",
             description: "Base URL for the API endpoint");
 
+        var configOption = new Option<bool>(
+            name: "--config",
+            description: "Enter configuration mode to manage model settings")
+        {
+            Arity = ArgumentArity.Zero
+        };
+
         // Add all options to the root command
         rootCommand.AddOption(promptOption);
         rootCommand.AddOption(fileOption);
@@ -79,10 +86,21 @@ public static class CommandLineBuilder
         rootCommand.AddOption(streamOption);
         rootCommand.AddOption(apiKeyOption);
         rootCommand.AddOption(baseUrlOption);
+        rootCommand.AddOption(configOption);
 
         // Add validation
         rootCommand.AddValidator(result =>
         {
+            // Check if --config flag is present
+            var tokens = result.Tokens.Select(t => t.Value).ToList();
+            var isConfigMode = tokens.Contains("--config");
+            
+            // Skip validation if in config mode
+            if (isConfigMode)
+            {
+                return;
+            }
+
             var promptValue = result.GetValueForOption(promptOption);
             var fileValue = result.GetValueForOption(fileOption);
             var hasStdin = !Console.IsInputRedirected;
@@ -142,6 +160,7 @@ public static class CommandLineBuilder
         var streamValue = GetOptionValue<bool?>(result, "--stream") ?? false;
         var apiKeyValue = GetOptionValue<string>(result, "--api-key");
         var baseUrlValue = GetOptionValue<string>(result, "--base-url");
+        var configValue = GetOptionValue<bool>(result, "--config");
 
         return new CliOptions
         {
@@ -158,7 +177,8 @@ public static class CommandLineBuilder
             Format = formatValue!,
             Stream = streamValue,
             ApiKey = apiKeyValue,
-            BaseUrl = baseUrlValue
+            BaseUrl = baseUrlValue,
+            Config = configValue
         };
     }
 
@@ -189,13 +209,14 @@ public static class CommandLineBuilder
             optionIndex = tokens.IndexOf(shortName);
         }
 
+        // For bool options, presence means true
+        if (typeof(T) == typeof(bool) || typeof(T) == typeof(bool?))
+        {
+            return (T)(object)true;
+        }
+
         if (optionIndex == -1 || optionIndex >= tokens.Count - 1)
         {
-            // For bool options, presence means true
-            if (typeof(T) == typeof(bool) || typeof(T) == typeof(bool?))
-            {
-                return (T)(object)true;
-            }
             return default(T);
         }
 
