@@ -113,6 +113,11 @@ public class UserSettings
     /// </summary>
     public ModelConfiguration? GetDefaultModelConfiguration()
     {
+        if (ModelConfigurations.Count == 0)
+        {
+            return null;
+        }
+        
         return ModelConfigurations.FirstOrDefault(m => m.Id == DefaultModelConfigurationId) 
                ?? ModelConfigurations.FirstOrDefault();
     }

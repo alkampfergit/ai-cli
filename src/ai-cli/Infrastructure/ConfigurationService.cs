@@ -48,6 +48,7 @@ public class ConfigurationService
                     .AddChoices(new[] {
                         "Add Model Configuration",
                         "Remove Model Configuration",
+                        "Remove All Models",
                         "List Model Configurations",
                         "Set Default Model Configuration",
                         "LiteLLM Proxy",
@@ -61,6 +62,9 @@ public class ConfigurationService
                     break;
                 case "Remove Model Configuration":
                     await RemoveModelConfigurationAsync();
+                    break;
+                case "Remove All Models":
+                    await RemoveAllModelConfigurationsAsync();
                     break;
                 case "List Model Configurations":
                     await ListModelConfigurationsAsync();
@@ -208,6 +212,41 @@ public class ConfigurationService
 
         AnsiConsole.MarkupLine("[green]Model configuration '{0}' removed successfully![/]", configToRemove.Name);
         _logger.LogInformation("Removed model configuration: {ConfigId}", configToRemove.Id);
+    }
+
+    /// <summary>
+    /// Removes all model configurations
+    /// </summary>
+    private Task RemoveAllModelConfigurationsAsync()
+    {
+        var settings = _userSettingsService.Load();
+        
+        if (settings.ModelConfigurations.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No model configurations found to remove.[/]");
+            return Task.CompletedTask;
+        }
+
+        var configCount = settings.ModelConfigurations.Count;
+        AnsiConsole.MarkupLine("[yellow]Found {0} model configuration(s) to remove.[/]", configCount);
+
+        var confirm = AnsiConsole.Confirm($"Are you sure you want to remove [red]ALL {configCount} model configurations[/]? This action cannot be undone.");
+        if (!confirm)
+        {
+            AnsiConsole.MarkupLine("[yellow]Operation cancelled.[/]");
+            return Task.CompletedTask;
+        }
+
+        // Clear all configurations
+        settings.ModelConfigurations.Clear();
+        settings.DefaultModelConfigurationId = string.Empty;
+
+        _userSettingsService.Save(settings);
+
+        AnsiConsole.MarkupLine("[green]All {0} model configurations removed successfully![/]", configCount);
+        _logger.LogInformation("Removed all model configurations ({Count} total)", configCount);
+        
+        return Task.CompletedTask;
     }
 
     /// <summary>

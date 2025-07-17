@@ -66,13 +66,13 @@ internal class Program
         try
         {
             var options = CommandLineBuilder.ParseOptions(parseResult);
-            
+
             // Handle config mode
             if (options.Config)
             {
                 return await HandleConfigModeAsync(cancellationToken);
             }
-            
+
             // Initialize user settings service
             var settingsPath = SettingsPathProvider.GetDefaultSettingsPath();
             var tempServiceCollection = new ServiceCollection()
@@ -81,7 +81,7 @@ internal class Program
                     builder.ClearProviders();
                     builder.AddSerilog();
                 });
-            
+
             // Register platform-specific encryption service
             if (OperatingSystem.IsWindows())
             {
@@ -91,22 +91,22 @@ internal class Program
             {
                 tempServiceCollection.AddSingleton<IEncryptionService, AesEncryptionService>();
             }
-            
+
             var tempServiceProvider = tempServiceCollection.BuildServiceProvider();
             var settingsLogger = tempServiceProvider.GetRequiredService<ILogger<FileUserSettingsService>>();
             var encryptionService = tempServiceProvider.GetRequiredService<IEncryptionService>();
-            
+
             var userSettingsService = new FileUserSettingsService(settingsPath, settingsLogger, encryptionService);
             var userSettings = userSettingsService.Load();
-            
+
             // Get the default model configuration
             var defaultModelConfig = userSettings.GetDefaultModelConfiguration();
             if (defaultModelConfig == null)
             {
-                Console.Error.WriteLine("Error: No model configuration found in settings. Please configure at least one model.");
+                Console.Error.WriteLine("Error: No model configuration found in settings. Please configure at least one model using --config.");
                 return ExitCodes.InvalidArguments;
             }
-            
+
             // CLI options override model configuration settings
             var effectiveApiKey = options.ApiKey ?? defaultModelConfig.ApiKey ?? Environment.GetEnvironmentVariable("AI_API_KEY");
             var effectiveBaseUrl = options.BaseUrl ?? defaultModelConfig.BaseUrl;
@@ -115,13 +115,7 @@ internal class Program
             var effectiveMaxTokens = options.MaxTokens ?? defaultModelConfig.MaxTokens;
             var effectiveFormat = options.Format != "text" ? options.Format : defaultModelConfig.Format;
             var effectiveStream = options.Stream != false ? options.Stream : defaultModelConfig.Stream;
-            
-            // Validate API key
-            if (string.IsNullOrEmpty(effectiveApiKey))
-            {
-                Console.Error.WriteLine("Error: API key is required. Set AI_API_KEY environment variable, use --api-key option, or configure in settings file.");
-                return ExitCodes.InvalidArguments;
-            }
+
 
             // Update CLI options with effective values
             options.ApiKey = effectiveApiKey;
@@ -135,7 +129,7 @@ internal class Program
             // Set up dependency injection
             var services = new ServiceCollection();
             ConfigureServices(services, userSettingsService);
-            
+
             using var serviceProvider = services.BuildServiceProvider();
             var promptService = serviceProvider.GetRequiredService<IPromptService>();
             var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
@@ -198,7 +192,7 @@ internal class Program
                     builder.ClearProviders();
                     builder.AddSerilog();
                 });
-            
+
             // Register platform-specific encryption service
             if (OperatingSystem.IsWindows())
             {
@@ -208,24 +202,24 @@ internal class Program
             {
                 tempServiceCollection.AddSingleton<IEncryptionService, AesEncryptionService>();
             }
-            
+
             var tempServiceProvider = tempServiceCollection.BuildServiceProvider();
             var settingsLogger = tempServiceProvider.GetRequiredService<ILogger<FileUserSettingsService>>();
             var encryptionService = tempServiceProvider.GetRequiredService<IEncryptionService>();
-            
+
             var userSettingsService = new FileUserSettingsService(settingsPath, settingsLogger, encryptionService);
-            
+
             // Create HTTP client for configuration service
             var httpClient = new HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(30);
-            
+
             // Create configuration service
             var configLogger = tempServiceProvider.GetRequiredService<ILogger<ConfigurationService>>();
             var configService = new ConfigurationService(userSettingsService, configLogger, httpClient);
-            
+
             // Start configuration menu
             await configService.StartConfigurationAsync();
-            
+
             return ExitCodes.Success;
         }
         catch (Exception ex)
@@ -250,7 +244,7 @@ internal class Program
 
         // Register user settings service as singleton
         services.AddSingleton(userSettingsService);
-        
+
         // Register platform-specific encryption service as singleton
         if (OperatingSystem.IsWindows())
         {
@@ -275,12 +269,12 @@ internal class Program
             var settingsService = provider.GetRequiredService<IUserSettingsService>();
             var settings = settingsService.Load();
             var defaultModelConfig = settings.GetDefaultModelConfiguration();
-            
+
             // Use settings for API key and base URL, with CLI override capability
             var apiKey = defaultModelConfig?.ApiKey ?? Environment.GetEnvironmentVariable("AI_API_KEY");
             var baseUrl = defaultModelConfig?.BaseUrl;
-            
-            return new OpenAIClient(httpClient, logger, apiKey!, baseUrl);
+
+            return new OpenAIClient(httpClient, logger, apiKey, baseUrl);
         });
 
         services.AddScoped<IPromptService, PromptService>();
@@ -295,17 +289,17 @@ internal class Program
     private static async Task ProcessNonStreamingRequest(IPromptService promptService, CliOptions options, CancellationToken cancellationToken)
     {
         var response = await promptService.ProcessPromptAsync(options, cancellationToken);
-        
+
         if (!response.Success)
         {
             throw new HttpRequestException(response.ErrorMessage ?? "Unknown API error");
         }
 
         var output = options.Format == "json" ? response.RawResponse : response.Content;
-        
+
         // Write to console
         Console.Write(output);
-        
+
         // Write to file if specified
         if (!string.IsNullOrEmpty(options.OutputFile))
         {
@@ -322,7 +316,7 @@ internal class Program
     private static async Task ProcessStreamingRequest(IPromptService promptService, CliOptions options, CancellationToken cancellationToken)
     {
         var content = new System.Text.StringBuilder();
-        
+
         await foreach (var chunk in promptService.ProcessStreamingPromptAsync(options, cancellationToken))
         {
             if (options.Format == "json")
@@ -334,7 +328,7 @@ internal class Program
             {
                 Console.Write(chunk);
             }
-            
+
             content.Append(chunk);
         }
 
@@ -354,9 +348,9 @@ internal class Program
     {
         // Strip ANSI sequences for security
         var cleanContent = System.Text.RegularExpressions.Regex.Replace(content, @"\x1B\[[0-9;]*[mGK]", "");
-        
+
         await File.WriteAllTextAsync(filePath, cleanContent);
-        
+
         // Set restrictive permissions on Unix systems
         if (!OperatingSystem.IsWindows())
         {

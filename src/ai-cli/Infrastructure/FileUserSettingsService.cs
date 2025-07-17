@@ -78,10 +78,17 @@ internal sealed class FileUserSettingsService : IUserSettingsService
             }
 
             // Ensure default model configuration ID is valid
-            if (string.IsNullOrEmpty(settings.DefaultModelConfigurationId) || 
-                !settings.ModelConfigurations.Any(m => m.Id == settings.DefaultModelConfigurationId))
+            if (settings.ModelConfigurations.Count > 0)
             {
-                settings.DefaultModelConfigurationId = settings.ModelConfigurations.First().Id;
+                if (string.IsNullOrEmpty(settings.DefaultModelConfigurationId) || 
+                    !settings.ModelConfigurations.Any(m => m.Id == settings.DefaultModelConfigurationId))
+                {
+                    settings.DefaultModelConfigurationId = settings.ModelConfigurations.First().Id;
+                }
+            }
+            else
+            {
+                settings.DefaultModelConfigurationId = string.Empty;
             }
 
             // Decrypt encrypted properties

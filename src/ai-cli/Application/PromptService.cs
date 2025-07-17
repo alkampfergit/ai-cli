@@ -1,6 +1,7 @@
 using AiCli.Models;
 using Microsoft.Extensions.Logging;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace AiCli.Application;
 
@@ -82,8 +83,24 @@ public class PromptService : IPromptService
 
         if (options.UseStdin)
         {
-            using var reader = new StreamReader(Console.OpenStandardInput());
-            return await reader.ReadToEndAsync(cancellationToken);
+            // For interactive mode, read from Console.In which handles user input properly
+            if (!Console.IsInputRedirected)
+            {
+                // Interactive mode - wait for user input
+                var input = new StringBuilder();
+                string? line;
+                while ((line = Console.ReadLine()) != null)
+                {
+                    input.AppendLine(line);
+                }
+                return input.ToString().TrimEnd();
+            }
+            else
+            {
+                // Redirected input mode - read from stdin
+                using var reader = new StreamReader(Console.OpenStandardInput());
+                return await reader.ReadToEndAsync(cancellationToken);
+            }
         }
 
         throw new InvalidOperationException("No prompt source specified");

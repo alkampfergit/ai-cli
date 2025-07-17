@@ -98,21 +98,19 @@ public static class CommandLineBuilder
 
             var promptValue = result.GetValueForOption(promptOption);
             var fileValue = result.GetValueForOption(fileOption);
-            var hasStdin = !Console.IsInputRedirected;
+            var hasStdinInput = Console.IsInputRedirected; // True when input is piped/redirected
+            var willUseStdin = string.IsNullOrEmpty(promptValue) && string.IsNullOrEmpty(fileValue);
 
             var sourceCount = 0;
             if (!string.IsNullOrEmpty(promptValue)) sourceCount++;
             if (!string.IsNullOrEmpty(fileValue)) sourceCount++;
-            if (!hasStdin) sourceCount++;
+            if (hasStdinInput || willUseStdin) sourceCount++;
 
             if (sourceCount > 1)
             {
                 result.ErrorMessage = "Only one prompt source can be specified: --prompt, --file, or stdin";
             }
-            else if (sourceCount == 0 && hasStdin)
-            {
-                result.ErrorMessage = "No prompt source specified. Use --prompt, --file, or provide input via stdin";
-            }
+            // No need to check for sourceCount == 0 since willUseStdin covers the interactive case
 
             var temperature = result.GetValueForOption(temperatureOption);
             if (temperature < 0.0f || temperature > 2.0f)
@@ -156,8 +154,7 @@ public static class CommandLineBuilder
             Prompt = promptValue,
             FilePath = fileValue,
             UseStdin = string.IsNullOrEmpty(promptValue) && 
-                      string.IsNullOrEmpty(fileValue) && 
-                      !Console.IsInputRedirected,
+                      string.IsNullOrEmpty(fileValue),
             Model = modelValue!,
             Temperature = temperatureValue,
             MaxTokens = maxTokensValue,

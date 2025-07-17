@@ -16,7 +16,7 @@ public class OpenAIClient : IAIClient
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<OpenAIClient> _logger;
-    private readonly string _apiKey;
+    private readonly string? _apiKey;
     private readonly string _baseUrl;
 
     /// <summary>
@@ -24,9 +24,9 @@ public class OpenAIClient : IAIClient
     /// </summary>
     /// <param name="httpClient">The HTTP client to use for requests</param>
     /// <param name="logger">The logger instance</param>
-    /// <param name="apiKey">The API key for authentication</param>
+    /// <param name="apiKey">The API key for authentication (can be null for some providers like LiteLLM)</param>
     /// <param name="baseUrl">The base URL for the API (optional)</param>
-    public OpenAIClient(HttpClient httpClient, ILogger<OpenAIClient> logger, string apiKey, string? baseUrl = null)
+    public OpenAIClient(HttpClient httpClient, ILogger<OpenAIClient> logger, string? apiKey, string? baseUrl = null)
     {
         _httpClient = httpClient;
         _logger = logger;
@@ -38,7 +38,11 @@ public class OpenAIClient : IAIClient
 
     private void ConfigureHttpClient()
     {
-        _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        // Only set authorization header if API key is provided
+        if (!string.IsNullOrEmpty(_apiKey))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+        }
         _httpClient.DefaultRequestHeaders.Add("User-Agent", "ai-cli/1.0");
     }
 
