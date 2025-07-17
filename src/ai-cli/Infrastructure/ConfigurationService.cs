@@ -4,6 +4,8 @@ using AiCli.Models;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using System.Globalization;
+using System.Net.Http;
+using System.Text.Json;
 
 namespace AiCli.Infrastructure;
 
@@ -14,16 +16,19 @@ public class ConfigurationService
 {
     private readonly IUserSettingsService _userSettingsService;
     private readonly ILogger<ConfigurationService> _logger;
+    private readonly HttpClient _httpClient;
 
     /// <summary>
     /// Initializes a new instance of the ConfigurationService
     /// </summary>
     /// <param name="userSettingsService">User settings service</param>
     /// <param name="logger">Logger instance</param>
-    public ConfigurationService(IUserSettingsService userSettingsService, ILogger<ConfigurationService> logger)
+    /// <param name="httpClient">HTTP client for API calls</param>
+    public ConfigurationService(IUserSettingsService userSettingsService, ILogger<ConfigurationService> logger, HttpClient httpClient)
     {
         _userSettingsService = userSettingsService;
         _logger = logger;
+        _httpClient = httpClient;
     }
 
     /// <summary>
@@ -45,6 +50,7 @@ public class ConfigurationService
                         "Remove Model Configuration",
                         "List Model Configurations",
                         "Set Default Model Configuration",
+                        "LiteLLM Proxy",
                         "Exit"
                     }));
 
@@ -61,6 +67,9 @@ public class ConfigurationService
                     break;
                 case "Set Default Model Configuration":
                     await SetDefaultModelConfigurationAsync();
+                    break;
+                case "LiteLLM Proxy":
+                    await ConfigureLiteLLMProxyAsync();
                     break;
                 case "Exit":
                     AnsiConsole.MarkupLine("[green]Configuration saved successfully![/]");
@@ -279,5 +288,130 @@ public class ConfigurationService
 
         AnsiConsole.MarkupLine("[green]Default model configuration set to: {0}[/]", selectedConfig.Name);
         _logger.LogInformation("Set default model configuration: {ConfigId}", selectedConfig.Id);
+    }
+
+    /// <summary>
+    /// Configures models from a LiteLLM proxy
+    /// </summary>
+    private async Task ConfigureLiteLLMProxyAsync()
+    {
+        AnsiConsole.MarkupLine("[yellow]Configuring LiteLLM Proxy models[/]");
+        AnsiConsole.WriteLine();
+
+        var proxyUrl = await AnsiConsole.AskAsync<string>("Enter LiteLLM proxy [green]URL[/]:", "http://localhost:4000");
+        
+        try
+        {
+            var models = await FetchLiteLLMModelsAsync(proxyUrl);
+            if (models.Count == 0)
+            {
+                AnsiConsole.MarkupLine("[red]No models found from the LiteLLM proxy.[/]");
+                return;
+            }
+
+            AnsiConsole.MarkupLine("[green]Found {0} models from LiteLLM proxy[/]", models.Count);
+            
+            // Display the models found
+            var table = new Table();
+            table.AddColumn("Model ID");
+            table.AddColumn("Owner");
+            
+            foreach (var model in models)
+            {
+                table.AddRow(model.Id, model.OwnedBy);
+            }
+            
+            AnsiConsole.Write(table);
+            AnsiConsole.WriteLine();
+
+            var confirm = AnsiConsole.Confirm("Do you want to add all these models to your configuration?");
+            if (!confirm)
+            {
+                AnsiConsole.MarkupLine("[yellow]Operation cancelled.[/]");
+                return;
+            }
+
+            await ConfigureModelsFromLiteLLMAsync(models, proxyUrl);
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine("[red]Error connecting to LiteLLM proxy: {0}[/]", ex.Message);
+            _logger.LogError(ex, "Error fetching models from LiteLLM proxy at {ProxyUrl}", proxyUrl);
+        }
+    }
+
+    /// <summary>
+    /// Fetches available models from LiteLLM proxy
+    /// </summary>
+    /// <param name="proxyUrl">The LiteLLM proxy URL</param>
+    /// <returns>List of available models</returns>
+    private async Task<List<LiteLLMModel>> FetchLiteLLMModelsAsync(string proxyUrl)
+    {
+        var modelsUrl = $"{proxyUrl.TrimEnd('/')}/models";
+        _logger.LogInformation("Fetching models from LiteLLM proxy: {Url}", modelsUrl);
+
+        var response = await _httpClient.GetAsync(modelsUrl);
+        response.EnsureSuccessStatusCode();
+
+        var responseContent = await response.Content.ReadAsStringAsync();
+        var modelsResponse = JsonSerializer.Deserialize<LiteLLMModelsResponse>(responseContent, new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        return modelsResponse?.Data ?? new List<LiteLLMModel>();
+    }
+
+    /// <summary>
+    /// Configures model configurations from LiteLLM models
+    /// </summary>
+    /// <param name="models">List of LiteLLM models</param>
+    /// <param name="proxyUrl">The LiteLLM proxy URL</param>
+    private Task ConfigureModelsFromLiteLLMAsync(List<LiteLLMModel> models, string proxyUrl)
+    {
+        var settings = _userSettingsService.Load();
+        var addedCount = 0;
+        var skippedCount = 0;
+
+        foreach (var model in models)
+        {
+            var configId = $"litellm-{model.Id}";
+            
+            // Check if configuration already exists
+            if (settings.GetModelConfiguration(configId) != null)
+            {
+                _logger.LogInformation("Model configuration {ConfigId} already exists, skipping", configId);
+                skippedCount++;
+                continue;
+            }
+
+            var modelConfig = new ModelConfiguration
+            {
+                Id = configId,
+                Name = $"LiteLLM: {model.Id}",
+                ApiKey = null, // Will use environment variable or prompt
+                BaseUrl = proxyUrl,
+                Model = model.Id,
+                Temperature = 1.0f,
+                MaxTokens = null,
+                Format = "text",
+                Stream = false
+            };
+
+            settings.AddOrUpdateModelConfiguration(modelConfig);
+            addedCount++;
+            
+            _logger.LogInformation("Added model configuration: {ConfigId} for model {ModelId}", configId, model.Id);
+        }
+
+        _userSettingsService.Save(settings);
+
+        AnsiConsole.MarkupLine("[green]Added {0} new model configurations[/]", addedCount);
+        if (skippedCount > 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]Skipped {0} existing model configurations[/]", skippedCount);
+        }
+        
+        return Task.CompletedTask;
     }
 }

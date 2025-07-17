@@ -215,9 +215,13 @@ internal class Program
             
             var userSettingsService = new FileUserSettingsService(settingsPath, settingsLogger, encryptionService);
             
+            // Create HTTP client for configuration service
+            var httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(30);
+            
             // Create configuration service
             var configLogger = tempServiceProvider.GetRequiredService<ILogger<ConfigurationService>>();
-            var configService = new ConfigurationService(userSettingsService, configLogger);
+            var configService = new ConfigurationService(userSettingsService, configLogger, httpClient);
             
             // Start configuration menu
             await configService.StartConfigurationAsync();
