@@ -7,7 +7,8 @@
       "Bash(dotnet test)",
       "Bash(dotnet test:*)",
       "Bash(dotnet run:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

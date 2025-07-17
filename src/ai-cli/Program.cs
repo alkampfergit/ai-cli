@@ -1,5 +1,6 @@
 ﻿using AiCli.Application;
 using AiCli.CLI;
+using AiCli.Configuration;
 using AiCli.Infrastructure;
 using AiCli.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -66,17 +67,58 @@ internal class Program
         {
             var options = CommandLineBuilder.ParseOptions(parseResult);
             
-            // Validate API key
-            var apiKey = options.ApiKey ?? Environment.GetEnvironmentVariable("AI_API_KEY");
-            if (string.IsNullOrEmpty(apiKey))
+            // Initialize user settings service
+            var settingsPath = SettingsPathProvider.GetDefaultSettingsPath();
+            var settingsLogger = new ServiceCollection()
+                .AddLogging(builder =>
+                {
+                    builder.ClearProviders();
+                    builder.AddSerilog();
+                })
+                .BuildServiceProvider()
+                .GetRequiredService<ILogger<FileUserSettingsService>>();
+            
+            var userSettingsService = new FileUserSettingsService(settingsPath, settingsLogger);
+            var userSettings = userSettingsService.Load();
+            
+            // Get the default model configuration
+            var defaultModelConfig = userSettings.GetDefaultModelConfiguration();
+            if (defaultModelConfig == null)
             {
-                Console.Error.WriteLine("Error: API key is required. Set AI_API_KEY environment variable or use --api-key option.");
+                Console.Error.WriteLine("Error: No model configuration found in settings. Please configure at least one model.");
+                return ExitCodes.InvalidArguments;
+            }
+            
+            // CLI options override model configuration settings
+            var effectiveApiKey = options.ApiKey ?? defaultModelConfig.ApiKey ?? Environment.GetEnvironmentVariable("AI_API_KEY");
+            var effectiveBaseUrl = options.BaseUrl ?? defaultModelConfig.BaseUrl;
+            var effectiveModel = options.Model != "gpt-3.5-turbo" ? options.Model : defaultModelConfig.Model;
+            var effectiveTemperature = options.Temperature != 1.0f ? options.Temperature : defaultModelConfig.Temperature;
+            var effectiveMaxTokens = options.MaxTokens ?? defaultModelConfig.MaxTokens;
+            var effectiveTopP = options.TopP ?? defaultModelConfig.TopP;
+            var effectiveFormat = options.Format != "text" ? options.Format : defaultModelConfig.Format;
+            var effectiveStream = options.Stream != false ? options.Stream : defaultModelConfig.Stream;
+            
+            // Validate API key
+            if (string.IsNullOrEmpty(effectiveApiKey))
+            {
+                Console.Error.WriteLine("Error: API key is required. Set AI_API_KEY environment variable, use --api-key option, or configure in settings file.");
                 return ExitCodes.InvalidArguments;
             }
 
+            // Update CLI options with effective values
+            options.ApiKey = effectiveApiKey;
+            options.BaseUrl = effectiveBaseUrl;
+            options.Model = effectiveModel;
+            options.Temperature = effectiveTemperature;
+            options.MaxTokens = effectiveMaxTokens;
+            options.TopP = effectiveTopP;
+            options.Format = effectiveFormat;
+            options.Stream = effectiveStream;
+
             // Set up dependency injection
             var services = new ServiceCollection();
-            ConfigureServices(services, apiKey, options.BaseUrl);
+            ConfigureServices(services, userSettingsService);
             
             using var serviceProvider = services.BuildServiceProvider();
             var promptService = serviceProvider.GetRequiredService<IPromptService>();
@@ -127,15 +169,17 @@ internal class Program
     /// Configures dependency injection services
     /// </summary>
     /// <param name="services">Service collection</param>
-    /// <param name="apiKey">API key</param>
-    /// <param name="baseUrl">Base URL</param>
-    private static void ConfigureServices(ServiceCollection services, string apiKey, string? baseUrl)
+    /// <param name="userSettingsService">User settings service instance</param>
+    private static void ConfigureServices(ServiceCollection services, IUserSettingsService userSettingsService)
     {
         services.AddLogging(builder =>
         {
             builder.ClearProviders();
             builder.AddSerilog();
         });
+
+        // Register user settings service as singleton
+        services.AddSingleton(userSettingsService);
 
         services.AddHttpClient<IAIClient, OpenAIClient>()
             .ConfigureHttpClient(client =>
@@ -148,7 +192,15 @@ internal class Program
             var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
             var httpClient = httpClientFactory.CreateClient(typeof(IAIClient).Name);
             var logger = provider.GetRequiredService<ILogger<OpenAIClient>>();
-            return new OpenAIClient(httpClient, logger, apiKey, baseUrl);
+            var settingsService = provider.GetRequiredService<IUserSettingsService>();
+            var settings = settingsService.Load();
+            var defaultModelConfig = settings.GetDefaultModelConfiguration();
+            
+            // Use settings for API key and base URL, with CLI override capability
+            var apiKey = defaultModelConfig?.ApiKey ?? Environment.GetEnvironmentVariable("AI_API_KEY");
+            var baseUrl = defaultModelConfig?.BaseUrl;
+            
+            return new OpenAIClient(httpClient, logger, apiKey!, baseUrl);
         });
 
         services.AddScoped<IPromptService, PromptService>();
