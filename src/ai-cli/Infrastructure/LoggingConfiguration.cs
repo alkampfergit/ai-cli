@@ -17,13 +17,13 @@ public static class LoggingConfiguration
     public static Serilog.ILogger ConfigureLogging(LogLevel minimumLevel = LogLevel.Information)
     {
         var logDirectory = GetLogDirectory();
-        var logPath = Path.Combine(logDirectory, "ai-cli.log");
+        var logPath = Path.Combine(logDirectory, "logs", "ai-cli.log");
 
         var config = new LoggerConfiguration()
             .MinimumLevel.Is(ConvertToSerilogLevel(minimumLevel))
-            .WriteTo.Console(restrictedToMinimumLevel: ConvertToSerilogLevel(minimumLevel))
+            .WriteTo.Console(restrictedToMinimumLevel: ConvertToSerilogLevel(LogLevel.Error))
             .WriteTo.File(logPath, 
-                restrictedToMinimumLevel: LogEventLevel.Debug,
+                restrictedToMinimumLevel: LogEventLevel.Information,
                 rollingInterval: RollingInterval.Day,
                 retainedFileCountLimit: 7,
                 shared: true);
