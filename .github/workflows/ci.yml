@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dotnet-version: ['9.0.x']
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ matrix.dotnet-version }}
+    
+    - name: Restore dependencies
+      run: dotnet restore src/ai-cli.sln
+    
+    - name: Build
+      run: dotnet build src/ai-cli.sln --configuration Release --no-restore
+    
+    - name: Run tests
+      run: dotnet test src/ai-cli.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      if: matrix.os == 'ubuntu-latest'
+      with:
+        files: '**/coverage.cobertura.xml'
+        fail_ci_if_error: false
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore src/ai-cli.sln
+    
+    - name: Build for multiple platforms
+      run: |
+        platforms=("win-x64" "linux-x64" "osx-x64")
+        
+        for platform in "${platforms[@]}"; do
+          echo "Building for $platform..."
+          dotnet publish src/ai-cli/ai-cli.csproj \
+            --configuration Release \
+            --runtime $platform \
+            --self-contained true \
+            --output publish/$platform \
+            /p:PublishSingleFile=true \
+            /p:PublishTrimmed=true \
+            /p:TrimmerDefaultAction=link
+        done
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ai-cli-binaries
+        path: publish/
