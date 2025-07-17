@@ -130,17 +130,18 @@ public static class CommandLineBuilder
     /// <returns>Configured CLI options</returns>
     public static CliOptions ParseOptions(System.CommandLine.Parsing.ParseResult result)
     {
-        var promptValue = result.GetValueForOption(result.CommandResult.Command.Options.OfType<Option<string?>>().First(o => o.HasAlias("--prompt")));
-        var fileValue = result.GetValueForOption(result.CommandResult.Command.Options.OfType<Option<string?>>().First(o => o.HasAlias("--file")));
-        var modelValue = result.GetValueForOption(result.CommandResult.Command.Options.OfType<Option<string>>().First(o => o.HasAlias("--model")));
-        var temperatureValue = result.GetValueForOption(result.CommandResult.Command.Options.OfType<Option<float>>().First(o => o.Name == "--temperature"));
-        var maxTokensValue = result.GetValueForOption(result.CommandResult.Command.Options.OfType<Option<int?>>().First(o => o.Name == "--max-tokens"));
-        var topPValue = result.GetValueForOption(result.CommandResult.Command.Options.OfType<Option<float?>>().First(o => o.Name == "--top-p"));
-        var outputFileValue = result.GetValueForOption(result.CommandResult.Command.Options.OfType<Option<string?>>().First(o => o.HasAlias("--output-file")));
-        var formatValue = result.GetValueForOption(result.CommandResult.Command.Options.OfType<Option<string>>().First(o => o.Name == "--format"));
-        var streamValue = result.GetValueForOption(result.CommandResult.Command.Options.OfType<Option<bool>>().First(o => o.Name == "--stream"));
-        var apiKeyValue = result.GetValueForOption(result.CommandResult.Command.Options.OfType<Option<string?>>().First(o => o.Name == "--api-key"));
-        var baseUrlValue = result.GetValueForOption(result.CommandResult.Command.Options.OfType<Option<string?>>().First(o => o.Name == "--base-url"));
+        // Extract values by checking if the option token was provided
+        var promptValue = GetOptionValue<string>(result, "--prompt", "-p");
+        var fileValue = GetOptionValue<string>(result, "--file", "-f");
+        var modelValue = GetOptionValue<string>(result, "--model", "-m") ?? "gpt-3.5-turbo";
+        var temperatureValue = GetOptionValue<float?>(result, "--temperature") ?? 1.0f;
+        var maxTokensValue = GetOptionValue<int?>(result, "--max-tokens");
+        var topPValue = GetOptionValue<float?>(result, "--top-p");
+        var outputFileValue = GetOptionValue<string>(result, "--output-file", "-o");
+        var formatValue = GetOptionValue<string>(result, "--format") ?? "text";
+        var streamValue = GetOptionValue<bool?>(result, "--stream") ?? false;
+        var apiKeyValue = GetOptionValue<string>(result, "--api-key");
+        var baseUrlValue = GetOptionValue<string>(result, "--base-url");
 
         return new CliOptions
         {
@@ -159,5 +160,78 @@ public static class CommandLineBuilder
             ApiKey = apiKeyValue,
             BaseUrl = baseUrlValue
         };
+    }
+
+    /// <summary>
+    /// Helper method to extract option values from parse result
+    /// </summary>
+    /// <typeparam name="T">Type of the option value</typeparam>
+    /// <param name="result">Parse result</param>
+    /// <param name="optionName">Option name</param>
+    /// <param name="shortName">Optional short name</param>
+    /// <returns>Option value if found, otherwise default</returns>
+    private static T? GetOptionValue<T>(System.CommandLine.Parsing.ParseResult result, string optionName, string? shortName = null)
+    {
+        // Check if the option token was provided in the parsed tokens
+        var tokens = result.Tokens.Select(t => t.Value).ToList();
+        
+        bool hasOption = tokens.Contains(optionName) || (shortName != null && tokens.Contains(shortName));
+        
+        if (!hasOption)
+        {
+            return default(T);
+        }
+
+        // Find the index of the option
+        var optionIndex = tokens.IndexOf(optionName);
+        if (optionIndex == -1 && shortName != null)
+        {
+            optionIndex = tokens.IndexOf(shortName);
+        }
+
+        if (optionIndex == -1 || optionIndex >= tokens.Count - 1)
+        {
+            // For bool options, presence means true
+            if (typeof(T) == typeof(bool) || typeof(T) == typeof(bool?))
+            {
+                return (T)(object)true;
+            }
+            return default(T);
+        }
+
+        // Get the value after the option
+        var valueToken = tokens[optionIndex + 1];
+        
+        // For bool options, if the next token is also an option, then this is a flag
+        if (typeof(T) == typeof(bool) || typeof(T) == typeof(bool?))
+        {
+            if (valueToken.StartsWith("-"))
+            {
+                return (T)(object)true;
+            }
+            return (T)(object)bool.Parse(valueToken);
+        }
+
+        // Try to convert to the target type
+        if (typeof(T) == typeof(string))
+        {
+            return (T)(object)valueToken;
+        }
+        else if (typeof(T) == typeof(float) || typeof(T) == typeof(float?))
+        {
+            if (float.TryParse(valueToken, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var floatValue))
+            {
+                return (T)(object)floatValue;
+            }
+        }
+        else if (typeof(T) == typeof(int) || typeof(T) == typeof(int?))
+        {
+            if (int.TryParse(valueToken, out var intValue))
+            {
+                return (T)(object)intValue;
+            }
+        }
+
+        return default(T);
     }
 }
