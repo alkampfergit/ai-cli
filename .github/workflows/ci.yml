@@ -122,6 +122,8 @@ jobs:
     needs: [build, version]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/hotfix/') || startsWith(github.ref, 'refs/heads/release/')
+    permissions:
+      contents: write
     steps:
     - uses: actions/checkout@v4
       with:
