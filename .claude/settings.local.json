@@ -15,7 +15,9 @@
       "Bash(ls:*)",
       "Bash(dir A:Developgithubai-clitest_prompt.txt)",
       "Bash(dotnet format:*)",
-      "Bash(dotnet tool list:*)"
+      "Bash(dotnet tool list:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
     ],
     "deny": []
   }

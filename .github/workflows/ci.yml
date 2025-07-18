@@ -7,86 +7,90 @@ on:
     branches: [ main, develop ]
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        dotnet-version: ['9.0.x']
-
+  version:                    # NEW – single-run GitVersion
+    runs-on: ubuntu-latest
+    outputs:
+      fullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}
+      semVer: ${{ steps.gitversion.outputs.semVer }}
+      assemblySemVer: ${{ steps.gitversion.outputs.assemblySemVer }}
+      assemblySemFileVer: ${{ steps.gitversion.outputs.assemblySemFileVer }}
+      informationalVersion: ${{ steps.gitversion.outputs.informationalVersion }}
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Required for GitVersion
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ matrix.dotnet-version }}
-    
+        fetch-depth: 0               # required for GitVersion
     - name: Install GitVersion
       uses: gittools/actions/gitversion/setup@v0.10.2
       with:
         versionSpec: '5.x'
-    
     - name: Determine Version
       id: gitversion
       uses: gittools/actions/gitversion/execute@v0.10.2
       with:
         useConfigFile: true
         configFilePath: GitVersion.yml
-    
+
+  test:
+    needs: version                 # depend on version job
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dotnet-version: ['9.0.x']
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Cache NuGet
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: ${{ runner.os }}-nuget-
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ matrix.dotnet-version }}
     - name: Restore dependencies
       run: dotnet restore src/ai-cli.sln
-    
     - name: Build
-      run: dotnet build src/ai-cli.sln --configuration Release --no-restore /p:Version=${{ steps.gitversion.outputs.assemblySemFileVer }} /p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} /p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }} /p:InformationalVersion=${{ steps.gitversion.outputs.informationalVersion }}
+      run: dotnet build src/ai-cli.sln --configuration Release --no-restore /p:Version=${{ needs.version.outputs.assemblySemFileVer }} /p:AssemblyVersion=${{ needs.version.outputs.assemblySemVer }} /p:FileVersion=${{ needs.version.outputs.assemblySemFileVer }} /p:InformationalVersion=${{ needs.version.outputs.informationalVersion }}
     
     - name: Run tests
-      run: dotnet test src/ai-cli.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage"
+      run: dotnet test src/ai-cli.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
     
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
       if: matrix.os == 'ubuntu-latest'
       with:
-        files: '**/coverage.cobertura.xml'
+        files: './coverage/**/coverage.cobertura.xml'
         fail_ci_if_error: false
 
   build:
-    needs: test
+    needs: [test, version]         # also depends on version job
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Required for GitVersion
-    
+        fetch-depth: 0
+    - name: Cache NuGet
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: linux-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: linux-nuget-
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '9.0.x'
-    
-    - name: Install GitVersion
-      uses: gittools/actions/gitversion/setup@v0.10.2
-      with:
-        versionSpec: '5.x'
-    
-    - name: Determine Version
-      id: gitversion
-      uses: gittools/actions/gitversion/execute@v0.10.2
-      with:
-        useConfigFile: true
-        configFilePath: GitVersion.yml
-    
     - name: Restore dependencies
       run: dotnet restore src/ai-cli.sln
-    
     - name: Build and publish for multiple platforms
       run: |
         platforms=("win-x64" "linux-x64" "osx-x64")
-        version="${{ steps.gitversion.outputs.semVer }}"
-        
+        version="${{ needs.version.outputs.semVer }}"
         for platform in "${platforms[@]}"; do
           echo "Building for $platform..."
           dotnet publish src/ai-cli/ai-cli.csproj \
@@ -97,11 +101,10 @@ jobs:
             /p:PublishSingleFile=true \
             /p:PublishTrimmed=true \
             /p:TrimmerDefaultAction=link \
-            /p:Version=${{ steps.gitversion.outputs.assemblySemFileVer }} \
-            /p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} \
-            /p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }} \
-            /p:InformationalVersion=${{ steps.gitversion.outputs.informationalVersion }}
-          
+            /p:Version=${{ needs.version.outputs.assemblySemFileVer }} \
+            /p:AssemblyVersion=${{ needs.version.outputs.assemblySemVer }} \
+            /p:FileVersion=${{ needs.version.outputs.assemblySemFileVer }} \
+            /p:InformationalVersion=${{ needs.version.outputs.informationalVersion }}
           # Create zip files for each platform
           cd publish/$platform
           if [[ "$platform" == "win-x64" ]]; then
@@ -111,7 +114,6 @@ jobs:
           fi
           cd ../..
         done
-    
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -119,38 +121,23 @@ jobs:
         path: publish/*.zip
 
   release:
-    needs: build
+    needs: [build, version]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
-    
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # Required for GitVersion
-    
-    - name: Install GitVersion
-      uses: gittools/actions/gitversion/setup@v0.10.2
-      with:
-        versionSpec: '5.x'
-    
-    - name: Determine Version
-      id: gitversion
-      uses: gittools/actions/gitversion/execute@v0.10.2
-      with:
-        useConfigFile: true
-        configFilePath: GitVersion.yml
-    
+        fetch-depth: 0
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
         name: ai-cli-binaries
         path: publish/
-    
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: v${{ steps.gitversion.outputs.semVer }}
-        name: Release v${{ steps.gitversion.outputs.semVer }}
+        tag_name: v${{ needs.version.outputs.semVer }}
+        name: Release v${{ needs.version.outputs.semVer }}
         body: |
           ## Changes
           
@@ -159,18 +146,18 @@ jobs:
           ## Download
           
           Choose the appropriate binary for your platform:
-          - **Windows**: ai-cli-${{ steps.gitversion.outputs.semVer }}-win-x64.zip
-          - **Linux**: ai-cli-${{ steps.gitversion.outputs.semVer }}-linux-x64.zip
-          - **macOS**: ai-cli-${{ steps.gitversion.outputs.semVer }}-osx-x64.zip
+          - **Windows**: ai-cli-${{ needs.version.outputs.semVer }}-win-x64.zip
+          - **Linux**: ai-cli-${{ needs.version.outputs.semVer }}-linux-x64.zip
+          - **macOS**: ai-cli-${{ needs.version.outputs.semVer }}-osx-x64.zip
           
           ## Version Information
-          - **Version**: ${{ steps.gitversion.outputs.semVer }}
+          - **Version**: ${{ needs.version.outputs.semVer }}
           - **Commit**: ${{ github.sha }}
           - **Build**: ${{ github.run_number }}
         draft: false
         prerelease: false
         files: |
-          ./publish/ai-cli-${{ steps.gitversion.outputs.semVer }}-win-x64.zip
-          ./publish/ai-cli-${{ steps.gitversion.outputs.semVer }}-linux-x64.zip
-          ./publish/ai-cli-${{ steps.gitversion.outputs.semVer }}-osx-x64.zip
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-win-x64.zip
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-linux-x64.zip
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-osx-x64.zip
         token: ${{ secrets.GITHUB_TOKEN }}
