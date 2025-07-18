@@ -68,9 +68,9 @@ jobs:
         fail_ci_if_error: false
 
   build:
-    needs: [test, version]         # also depends on version job
+    needs: [test, version]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/hotfix/') || startsWith(github.ref, 'refs/heads/release/')
     steps:
     - uses: actions/checkout@v4
       with:
@@ -123,7 +123,7 @@ jobs:
   release:
     needs: [build, version]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/hotfix/') || startsWith(github.ref, 'refs/heads/release/')
     steps:
     - uses: actions/checkout@v4
       with:
