@@ -71,6 +71,9 @@ jobs:
     needs: [test, version]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/hotfix/') || startsWith(github.ref, 'refs/heads/release/')
+    strategy:
+      matrix:
+        platform: ['win-x64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64']
     steps:
     - uses: actions/checkout@v4
       with:
@@ -87,35 +90,33 @@ jobs:
         dotnet-version: '9.0.x'
     - name: Restore dependencies
       run: dotnet restore src/ai-cli.sln
-    - name: Build and publish for multiple platforms
+    - name: Build and publish for ${{ matrix.platform }}
       run: |
-        platforms=("win-x64" "linux-x64" "linux-arm64" "osx-x64" "osx-arm64")
         version="${{ needs.version.outputs.semVer }}"
-        for platform in "${platforms[@]}"; do
-          echo "Building for $platform..."
-          dotnet publish src/ai-cli/ai-cli.csproj \
-            --configuration Release \
-            --runtime $platform \
-            --self-contained true \
-            --output publish/$platform \
-            /p:PublishSingleFile=true \
-            /p:Version=${{ needs.version.outputs.assemblySemFileVer }} \
-            /p:AssemblyVersion=${{ needs.version.outputs.assemblySemVer }} \
-            /p:FileVersion=${{ needs.version.outputs.assemblySemFileVer }} \
-            /p:InformationalVersion=${{ needs.version.outputs.informationalVersion }}
-          # Create zip files for each platform
-          cd publish/$platform
-          if [[ "$platform" == "win-x64" ]]; then
-            zip -r ../ai-cli-$version-$platform.zip ai-cli.exe
-          else
-            zip -r ../ai-cli-$version-$platform.zip ai-cli
-          fi
-          cd ../..
-        done
+        platform="${{ matrix.platform }}"
+        echo "Building for $platform..."
+        dotnet publish src/ai-cli/ai-cli.csproj \
+          --configuration Release \
+          --runtime $platform \
+          --self-contained true \
+          --output publish/$platform \
+          /p:PublishSingleFile=true \
+          /p:Version=${{ needs.version.outputs.assemblySemFileVer }} \
+          /p:AssemblyVersion=${{ needs.version.outputs.assemblySemVer }} \
+          /p:FileVersion=${{ needs.version.outputs.assemblySemFileVer }} \
+          /p:InformationalVersion=${{ needs.version.outputs.informationalVersion }}
+        # Create zip files for each platform
+        cd publish/$platform
+        if [[ "$platform" == "win-x64" ]]; then
+          zip -r ../ai-cli-$version-$platform.zip ai-cli.exe
+        else
+          zip -r ../ai-cli-$version-$platform.zip ai-cli
+        fi
+        cd ../..
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ai-cli-binaries
+        name: ai-cli-binary-${{ matrix.platform }}
         path: publish/*.zip
 
   release:
@@ -133,8 +134,9 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
-        name: ai-cli-binaries
+        pattern: ai-cli-binary-*
         path: publish/
+        merge-multiple: true
     - name: Attest artifacts
       uses: actions/attest-build-provenance@v1
       with:
