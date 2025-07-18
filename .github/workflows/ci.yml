@@ -89,7 +89,7 @@ jobs:
       run: dotnet restore src/ai-cli.sln
     - name: Build and publish for multiple platforms
       run: |
-        platforms=("win-x64" "linux-x64" "osx-x64")
+        platforms=("win-x64" "linux-x64" "linux-arm64" "osx-x64" "osx-arm64")
         version="${{ needs.version.outputs.semVer }}"
         for platform in "${platforms[@]}"; do
           echo "Building for $platform..."
@@ -146,9 +146,11 @@ jobs:
           ## Download
           
           Choose the appropriate binary for your platform:
-          - **Windows**: ai-cli-${{ needs.version.outputs.semVer }}-win-x64.zip
-          - **Linux**: ai-cli-${{ needs.version.outputs.semVer }}-linux-x64.zip
-          - **macOS**: ai-cli-${{ needs.version.outputs.semVer }}-osx-x64.zip
+          - **Windows x64**: ai-cli-${{ needs.version.outputs.semVer }}-win-x64.zip
+          - **Linux x64**: ai-cli-${{ needs.version.outputs.semVer }}-linux-x64.zip
+          - **Linux ARM64**: ai-cli-${{ needs.version.outputs.semVer }}-linux-arm64.zip
+          - **macOS x64 (Intel)**: ai-cli-${{ needs.version.outputs.semVer }}-osx-x64.zip
+          - **macOS ARM64 (Apple Silicon)**: ai-cli-${{ needs.version.outputs.semVer }}-osx-arm64.zip
           
           ## Version Information
           - **Version**: ${{ needs.version.outputs.semVer }}
@@ -159,5 +161,7 @@ jobs:
         files: |
           ./publish/ai-cli-${{ needs.version.outputs.semVer }}-win-x64.zip
           ./publish/ai-cli-${{ needs.version.outputs.semVer }}-linux-x64.zip
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-linux-arm64.zip
           ./publish/ai-cli-${{ needs.version.outputs.semVer }}-osx-x64.zip
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-osx-arm64.zip
         token: ${{ secrets.GITHUB_TOKEN }}
