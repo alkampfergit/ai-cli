@@ -29,7 +29,7 @@ public class UserSettingsTests
         settings.ModelConfigurations.Should().HaveCount(1);
         settings.DefaultModelConfigurationId.Should().Be("default");
         settings.RefreshInterval.Should().Be(30);
-        
+
         var defaultConfig = settings.ModelConfigurations.First();
         defaultConfig.Id.Should().Be("default");
         defaultConfig.Name.Should().Be("Default OpenAI Configuration");

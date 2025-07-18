@@ -80,7 +80,7 @@ internal sealed class FileUserSettingsService : IUserSettingsService
             // Ensure default model configuration ID is valid
             if (settings.ModelConfigurations.Count > 0)
             {
-                if (string.IsNullOrEmpty(settings.DefaultModelConfigurationId) || 
+                if (string.IsNullOrEmpty(settings.DefaultModelConfigurationId) ||
                     !settings.ModelConfigurations.Any(m => m.Id == settings.DefaultModelConfigurationId))
                 {
                     settings.DefaultModelConfigurationId = settings.ModelConfigurations.First().Id;

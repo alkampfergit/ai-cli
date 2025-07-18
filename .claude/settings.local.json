@@ -12,7 +12,9 @@
       "Bash(dotnet build:*)",
       "Bash(timeout:*)",
       "Bash(dotnet publish:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(dir A:Developgithubai-clitest_prompt.txt)",
+      "Bash(dotnet format:*)"
     ],
     "deny": []
   }

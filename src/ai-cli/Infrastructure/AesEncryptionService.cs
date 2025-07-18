@@ -108,7 +108,7 @@ internal sealed class AesEncryptionService : IEncryptionService
         {
             // Use machine-specific entropy to derive a consistent key
             var entropy = GetMachineEntropy();
-            
+
             // Use PBKDF2 to derive a 256-bit key from the entropy
             using var pbkdf2 = new Rfc2898DeriveBytes(entropy, entropy, 10000, HashAlgorithmName.SHA256);
             return pbkdf2.GetBytes(32); // 256 bits
@@ -126,7 +126,7 @@ internal sealed class AesEncryptionService : IEncryptionService
     private byte[] GetMachineEntropy()
     {
         var machineInfo = $"{Environment.MachineName}|{Environment.UserName}|{Environment.OSVersion.Platform}";
-        
+
         // Add additional entropy sources that are consistent across instances
         var additionalEntropy = new List<string>
         {

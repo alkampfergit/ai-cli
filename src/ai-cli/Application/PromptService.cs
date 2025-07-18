@@ -40,7 +40,23 @@ public class PromptService : IPromptService
 
         _logger.LogInformation("Processing prompt with model {Model}", options.Model);
 
-        return await _aiClient.SendRequestAsync(request, cancellationToken);
+        var response = await _aiClient.SendRequestAsync(request, cancellationToken);
+
+        // Delete the prompt file after processing if -f option was used
+        if (!string.IsNullOrEmpty(options.FilePath) && File.Exists(options.FilePath))
+        {
+            try
+            {
+                File.Delete(options.FilePath);
+                _logger.LogDebug("Deleted prompt file: {FilePath}", options.FilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete prompt file: {FilePath}", options.FilePath);
+            }
+        }
+
+        return response;
     }
 
     /// <inheritdoc/>
@@ -62,6 +78,20 @@ public class PromptService : IPromptService
         await foreach (var chunk in _aiClient.SendStreamingRequestAsync(request, cancellationToken))
         {
             yield return chunk;
+        }
+
+        // Delete the prompt file after processing if -f option was used
+        if (!string.IsNullOrEmpty(options.FilePath) && File.Exists(options.FilePath))
+        {
+            try
+            {
+                File.Delete(options.FilePath);
+                _logger.LogDebug("Deleted prompt file: {FilePath}", options.FilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete prompt file: {FilePath}", options.FilePath);
+            }
         }
     }
 

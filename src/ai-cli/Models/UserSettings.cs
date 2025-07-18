@@ -117,8 +117,8 @@ public class UserSettings
         {
             return null;
         }
-        
-        return ModelConfigurations.FirstOrDefault(m => m.Id == DefaultModelConfigurationId) 
+
+        return ModelConfigurations.FirstOrDefault(m => m.Id == DefaultModelConfigurationId)
                ?? ModelConfigurations.FirstOrDefault();
     }
 

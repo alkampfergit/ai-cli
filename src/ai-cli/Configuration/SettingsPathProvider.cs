@@ -41,7 +41,7 @@ public static class SettingsPathProvider
             {
                 return xdgConfigHome;
             }
-            
+
             var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             return Path.Combine(home, ".config");
         }

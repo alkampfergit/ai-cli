@@ -78,21 +78,17 @@ public class PromptServiceTests
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
-        try
-        {
-            // Act
-            var result = await _promptService.ProcessPromptAsync(options);
+        // Act
+        var result = await _promptService.ProcessPromptAsync(options);
 
-            // Assert
-            result.Should().BeEquivalentTo(expectedResponse);
-            _mockAIClient.Verify(x => x.SendRequestAsync(
-                It.Is<AIRequest>(r => r.Prompt == "File content" && r.Model == "gpt-3.5-turbo"),
-                It.IsAny<CancellationToken>()), Times.Once);
-        }
-        finally
-        {
-            File.Delete(tempFile);
-        }
+        // Assert
+        result.Should().BeEquivalentTo(expectedResponse);
+        _mockAIClient.Verify(x => x.SendRequestAsync(
+            It.Is<AIRequest>(r => r.Prompt == "File content" && r.Model == "gpt-3.5-turbo"),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        // Verify file was deleted after processing
+        File.Exists(tempFile).Should().BeFalse("the prompt file should be deleted after processing");
     }
 
     [Fact]
@@ -106,7 +102,7 @@ public class PromptServiceTests
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(() => 
+        await Assert.ThrowsAsync<FileNotFoundException>(() =>
             _promptService.ProcessPromptAsync(options));
     }
 
@@ -120,7 +116,7 @@ public class PromptServiceTests
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _promptService.ProcessPromptAsync(options));
     }
 
@@ -135,7 +131,7 @@ public class PromptServiceTests
         };
 
         var chunks = new[] { "Hello", "! How", " can I", " help?" };
-        
+
         _mockAIClient.Setup(x => x.SendStreamingRequestAsync(
             It.Is<AIRequest>(r => r.Prompt == "Hello, world!" && r.Model == "gpt-3.5-turbo"),
             It.IsAny<CancellationToken>()))
@@ -153,6 +149,43 @@ public class PromptServiceTests
         _mockAIClient.Verify(x => x.SendStreamingRequestAsync(
             It.Is<AIRequest>(r => r.Prompt == "Hello, world!" && r.Model == "gpt-3.5-turbo"),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ProcessStreamingPromptAsync_WithFilePrompt_ShouldDeleteFileAfterProcessing()
+    {
+        // Arrange
+        var tempFile = Path.GetTempFileName();
+        await File.WriteAllTextAsync(tempFile, "File content for streaming");
+
+        var options = new CliOptions
+        {
+            FilePath = tempFile,
+            Model = "gpt-3.5-turbo"
+        };
+
+        var chunks = new[] { "Response", " to", " file", " content" };
+
+        _mockAIClient.Setup(x => x.SendStreamingRequestAsync(
+            It.Is<AIRequest>(r => r.Prompt == "File content for streaming" && r.Model == "gpt-3.5-turbo"),
+            It.IsAny<CancellationToken>()))
+            .Returns(CreateAsyncEnumerable(chunks));
+
+        // Act
+        var result = new List<string>();
+        await foreach (var chunk in _promptService.ProcessStreamingPromptAsync(options))
+        {
+            result.Add(chunk);
+        }
+
+        // Assert
+        result.Should().BeEquivalentTo(chunks);
+        _mockAIClient.Verify(x => x.SendStreamingRequestAsync(
+            It.Is<AIRequest>(r => r.Prompt == "File content for streaming" && r.Model == "gpt-3.5-turbo"),
+            It.IsAny<CancellationToken>()), Times.Once);
+
+        // Verify file was deleted after processing
+        File.Exists(tempFile).Should().BeFalse("the prompt file should be deleted after streaming processing");
     }
 
     private static async IAsyncEnumerable<string> CreateAsyncEnumerable(IEnumerable<string> items)

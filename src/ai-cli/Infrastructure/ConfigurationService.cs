@@ -93,7 +93,7 @@ public class ConfigurationService
         AnsiConsole.WriteLine();
 
         var id = await AnsiConsole.AskAsync<string>("Enter configuration [green]ID[/]:");
-        
+
         // Check if ID already exists
         var settings = _userSettingsService.Load();
         if (settings.GetModelConfiguration(id) != null)
@@ -110,8 +110,8 @@ public class ConfigurationService
             baseUrl = null;
         }
 
-        var model = await  AnsiConsole.AskAsync<string>("Enter [green]model name[/]:", "gpt-3.5-turbo");
-        
+        var model = await AnsiConsole.AskAsync<string>("Enter [green]model name[/]:", "gpt-3.5-turbo");
+
         var temperature = await AnsiConsole.AskAsync<float>("Enter [green]temperature[/] (0.0-2.0):", 1.0f);
         if (temperature < 0.0f || temperature > 2.0f)
         {
@@ -161,7 +161,7 @@ public class ConfigurationService
     private async Task RemoveModelConfigurationAsync()
     {
         var settings = _userSettingsService.Load();
-        
+
         if (settings.ModelConfigurations.Count == 0)
         {
             AnsiConsole.MarkupLine("[red]No model configurations found![/]");
@@ -220,7 +220,7 @@ public class ConfigurationService
     private Task RemoveAllModelConfigurationsAsync()
     {
         var settings = _userSettingsService.Load();
-        
+
         if (settings.ModelConfigurations.Count == 0)
         {
             AnsiConsole.MarkupLine("[yellow]No model configurations found to remove.[/]");
@@ -245,7 +245,7 @@ public class ConfigurationService
 
         AnsiConsole.MarkupLine("[green]All {0} model configurations removed successfully![/]", configCount);
         _logger.LogInformation("Removed all model configurations ({Count} total)", configCount);
-        
+
         return Task.CompletedTask;
     }
 
@@ -255,7 +255,7 @@ public class ConfigurationService
     private Task ListModelConfigurationsAsync()
     {
         var settings = _userSettingsService.Load();
-        
+
         if (settings.ModelConfigurations.Count == 0)
         {
             AnsiConsole.MarkupLine("[red]No model configurations found![/]");
@@ -291,7 +291,7 @@ public class ConfigurationService
     private async Task SetDefaultModelConfigurationAsync()
     {
         var settings = _userSettingsService.Load();
-        
+
         if (settings.ModelConfigurations.Count == 0)
         {
             AnsiConsole.MarkupLine("[red]No model configurations found![/]");
@@ -338,7 +338,7 @@ public class ConfigurationService
         AnsiConsole.WriteLine();
 
         var proxyUrl = await AnsiConsole.AskAsync<string>("Enter LiteLLM proxy [green]URL[/]:", "http://localhost:4000");
-        
+
         try
         {
             var models = await FetchLiteLLMModelsAsync(proxyUrl);
@@ -349,17 +349,17 @@ public class ConfigurationService
             }
 
             AnsiConsole.MarkupLine("[green]Found {0} models from LiteLLM proxy[/]", models.Count);
-            
+
             // Display the models found
             var table = new Table();
             table.AddColumn("Model ID");
             table.AddColumn("Owner");
-            
+
             foreach (var model in models)
             {
                 table.AddRow(model.Id, model.OwnedBy);
             }
-            
+
             AnsiConsole.Write(table);
             AnsiConsole.WriteLine();
 
@@ -415,7 +415,7 @@ public class ConfigurationService
         foreach (var model in models)
         {
             var configId = $"litellm-{model.Id}";
-            
+
             // Check if configuration already exists
             if (settings.GetModelConfiguration(configId) != null)
             {
@@ -439,7 +439,7 @@ public class ConfigurationService
 
             settings.AddOrUpdateModelConfiguration(modelConfig);
             addedCount++;
-            
+
             _logger.LogInformation("Added model configuration: {ConfigId} for model {ModelId}", configId, model.Id);
         }
 
@@ -450,7 +450,7 @@ public class ConfigurationService
         {
             AnsiConsole.MarkupLine("[yellow]Skipped {0} existing model configurations[/]", skippedCount);
         }
-        
+
         return Task.CompletedTask;
     }
 }

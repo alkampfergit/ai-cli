@@ -17,7 +17,7 @@ public class CommandLineBuilderTests
         rootCommand.Should().NotBeNull();
         rootCommand.Description.Should().Be("AI CLI - Send prompts to OpenAI-compatible APIs");
         rootCommand.Options.Should().HaveCount(10);
-        
+
         // Check that all expected options are present
         rootCommand.Options.Select(o => o.Name).Should().Contain(new[]
         {
@@ -109,7 +109,7 @@ public class CommandLineBuilderTests
         parseResult.Errors[0].Message.Should().Contain("Temperature must be between 0.0 and 2.0");
     }
 
-[Fact]
+    [Fact]
     public void CreateRootCommand_WithInvalidFormat_ShouldFail()
     {
         // Arrange

@@ -79,7 +79,7 @@ public static class CommandLineBuilder
         {
             // Check if --config flag is present using the proper System.CommandLine method
             var isConfigMode = result.GetValueForOption(configOption);
-            
+
             // Skip validation if in config mode
             if (isConfigMode)
             {
@@ -141,7 +141,7 @@ public static class CommandLineBuilder
         {
             Prompt = promptValue,
             FilePath = fileValue,
-            UseStdin = string.IsNullOrEmpty(promptValue) && 
+            UseStdin = string.IsNullOrEmpty(promptValue) &&
                       string.IsNullOrEmpty(fileValue),
             Model = modelValue!,
             Temperature = temperatureValue,
@@ -165,9 +165,9 @@ public static class CommandLineBuilder
     {
         // Check if the option token was provided in the parsed tokens
         var tokens = result.Tokens.Select(t => t.Value).ToList();
-        
+
         bool hasOption = tokens.Contains(optionName) || (shortName != null && tokens.Contains(shortName));
-        
+
         if (!hasOption)
         {
             return default(T);
@@ -193,7 +193,7 @@ public static class CommandLineBuilder
 
         // Get the value after the option
         var valueToken = tokens[optionIndex + 1];
-        
+
         // For bool options, if the next token is also an option, then this is a flag
         if (typeof(T) == typeof(bool) || typeof(T) == typeof(bool?))
         {
