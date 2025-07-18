@@ -124,6 +124,8 @@ jobs:
     if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/hotfix/') || startsWith(github.ref, 'refs/heads/release/')
     permissions:
       contents: write
+      attestations: write
+      id-token: write
     steps:
     - uses: actions/checkout@v4
       with:
@@ -133,6 +135,10 @@ jobs:
       with:
         name: ai-cli-binaries
         path: publish/
+    - name: Attest artifacts
+      uses: actions/attest-build-provenance@v1
+      with:
+        subject-path: 'publish/*.zip'
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -156,6 +162,13 @@ jobs:
           - **Version**: ${{ needs.version.outputs.semVer }}
           - **Commit**: ${{ github.sha }}
           - **Build**: ${{ github.run_number }}
+          
+          ## Security & Attestation
+          All release artifacts are signed with GitHub's build provenance attestation. You can verify the integrity and authenticity of the binaries using the [GitHub CLI](https://cli.github.com/):
+          
+          ```bash
+          gh attestation verify <downloaded-file> --repo alkampfergit/ai-cli
+          ```
         draft: false
         prerelease: false
         files: |
