@@ -14,7 +14,8 @@
       "Bash(dotnet publish:*)",
       "Bash(ls:*)",
       "Bash(dir A:Developgithubai-clitest_prompt.txt)",
-      "Bash(dotnet format:*)"
+      "Bash(dotnet format:*)",
+      "Bash(dotnet tool list:*)"
     ],
     "deny": []
   }
