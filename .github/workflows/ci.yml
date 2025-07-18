@@ -99,8 +99,6 @@ jobs:
             --self-contained true \
             --output publish/$platform \
             /p:PublishSingleFile=true \
-            /p:PublishTrimmed=true \
-            /p:TrimmerDefaultAction=link \
             /p:Version=${{ needs.version.outputs.assemblySemFileVer }} \
             /p:AssemblyVersion=${{ needs.version.outputs.assemblySemVer }} \
             /p:FileVersion=${{ needs.version.outputs.assemblySemFileVer }} \
