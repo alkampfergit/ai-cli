@@ -102,6 +102,7 @@ public class UserSettings
         {
             ModelConfigurations = new List<ModelConfiguration>
             {
+                ModelConfiguration.CreateDefault()
             },
             DefaultModelConfigurationId = "default",
             RefreshInterval = 30

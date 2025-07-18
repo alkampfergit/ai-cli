@@ -65,6 +65,7 @@ internal sealed class FileUserSettingsService : IUserSettingsService
             {
                 settings.ModelConfigurations = new List<ModelConfiguration>
                 {
+                    ModelConfiguration.CreateDefault()
                 };
             }
 
@@ -88,7 +89,7 @@ internal sealed class FileUserSettingsService : IUserSettingsService
             }
             else
             {
-                settings.DefaultModelConfigurationId = string.Empty;
+                settings.DefaultModelConfigurationId = "default";
             }
 
             // Decrypt encrypted properties

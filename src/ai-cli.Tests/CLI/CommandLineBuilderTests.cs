@@ -16,13 +16,13 @@ public class CommandLineBuilderTests
         // Assert
         rootCommand.Should().NotBeNull();
         rootCommand.Description.Should().Be("AI CLI - Send prompts to OpenAI-compatible APIs");
-        rootCommand.Options.Should().HaveCount(10);
+        rootCommand.Options.Should().HaveCount(9);
 
         // Check that all expected options are present
         rootCommand.Options.Select(o => o.Name).Should().Contain(new[]
         {
             "prompt", "file", "model", "temperature", "max-tokens",
-            "output-file", "format", "stream", "api-key", "base-url"
+            "output-file", "format", "stream", "config"
         });
     }
 
