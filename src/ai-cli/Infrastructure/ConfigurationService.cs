@@ -52,6 +52,7 @@ public class ConfigurationService
                         "List Model Configurations",
                         "Set Default Model Configuration",
                         "LiteLLM Proxy",
+                        "Set API Key for LiteLLM Proxy Models",
                         "Exit"
                     }));
 
@@ -74,6 +75,9 @@ public class ConfigurationService
                     break;
                 case "LiteLLM Proxy":
                     await ConfigureLiteLLMProxyAsync();
+                    break;
+                case "Set API Key for LiteLLM Proxy Models":
+                    await SetLiteLLMProxyApiKeyAsync();
                     break;
                 case "Exit":
                     AnsiConsole.MarkupLine("[green]Configuration saved successfully![/]");
@@ -104,6 +108,7 @@ public class ConfigurationService
 
         var name = await AnsiConsole.AskAsync<string>("Enter configuration [green]name[/]:");
         var apiKey = await AnsiConsole.PromptAsync(new TextPrompt<string>("Enter [green]API key[/]:").Secret());
+
         var baseUrl = await AnsiConsole.AskAsync<string>("Enter [green]base URL[/] (or press Enter for default):");
         if (string.IsNullOrWhiteSpace(baseUrl))
         {
@@ -139,6 +144,7 @@ public class ConfigurationService
         {
             Id = id,
             Name = name,
+            Type = ModelType.Generic,
             ApiKey = apiKey,
             BaseUrl = baseUrl,
             Model = model,
@@ -168,11 +174,6 @@ public class ConfigurationService
             return;
         }
 
-        if (settings.ModelConfigurations.Count == 1)
-        {
-            AnsiConsole.MarkupLine("[red]Cannot remove the only model configuration![/]");
-            return;
-        }
 
         var choices = settings.ModelConfigurations.Select(m => $"{m.Name} ({m.Id})").ToArray();
         var selected = await AnsiConsole.PromptAsync(
@@ -204,8 +205,16 @@ public class ConfigurationService
         // If we removed the default configuration, set a new default
         if (settings.DefaultModelConfigurationId == configToRemove.Id)
         {
-            settings.DefaultModelConfigurationId = settings.ModelConfigurations.First().Id;
-            AnsiConsole.MarkupLine("[yellow]Default model configuration changed to: {0}[/]", settings.ModelConfigurations.First().Name);
+            if (settings.ModelConfigurations.Count > 0)
+            {
+                settings.DefaultModelConfigurationId = settings.ModelConfigurations.First().Id;
+                AnsiConsole.MarkupLine("[yellow]Default model configuration changed to: {0}[/]", settings.ModelConfigurations.First().Name);
+            }
+            else
+            {
+                settings.DefaultModelConfigurationId = string.Empty;
+                AnsiConsole.MarkupLine("[yellow]No model configurations remaining.[/]");
+            }
         }
 
         _userSettingsService.Save(settings);
@@ -265,6 +274,7 @@ public class ConfigurationService
         var table = new Table();
         table.AddColumn("ID");
         table.AddColumn("Name");
+        table.AddColumn("Type");
         table.AddColumn("Model");
         table.AddColumn("Base URL");
         table.AddColumn("Default");
@@ -272,9 +282,11 @@ public class ConfigurationService
         foreach (var config in settings.ModelConfigurations)
         {
             var isDefault = config.Id == settings.DefaultModelConfigurationId;
+            var typeDisplay = config.Type == ModelType.Generic ? "Generic" : "LiteLLM Proxy";
             table.AddRow(
                 config.Id,
                 config.Name,
+                typeDisplay,
                 config.Model,
                 config.BaseUrl ?? "Default",
                 isDefault ? "[green]Yes[/]" : "No"
@@ -428,6 +440,7 @@ public class ConfigurationService
             {
                 Id = configId,
                 Name = $"LiteLLM: {model.Id}",
+                Type = ModelType.LiteLlmProxy,
                 ApiKey = null, // Will use environment variable or prompt
                 BaseUrl = proxyUrl,
                 Model = model.Id,
@@ -452,5 +465,68 @@ public class ConfigurationService
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Sets API key for all LiteLLM proxy model configurations
+    /// </summary>
+    private async Task SetLiteLLMProxyApiKeyAsync()
+    {
+        var settings = _userSettingsService.Load();
+        var liteLlmModels = settings.ModelConfigurations.Where(m => m.Type == ModelType.LiteLlmProxy).ToList();
+
+        if (liteLlmModels.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[yellow]No LiteLLM proxy model configurations found.[/]");
+            return;
+        }
+
+        AnsiConsole.MarkupLine("[yellow]Found {0} LiteLLM proxy model configurations[/]", liteLlmModels.Count);
+
+        // Display the models that will be updated
+        var table = new Table();
+        table.AddColumn("ID");
+        table.AddColumn("Name");
+        table.AddColumn("Current API Key Status");
+
+        foreach (var model in liteLlmModels)
+        {
+            var hasApiKey = !string.IsNullOrWhiteSpace(model.ApiKey);
+            table.AddRow(
+                model.Id,
+                model.Name,
+                hasApiKey ? "[green]Set[/]" : "[red]Not Set[/]"
+            );
+        }
+
+        AnsiConsole.Write(table);
+        AnsiConsole.WriteLine();
+
+        var apiKey = await AnsiConsole.PromptAsync(new TextPrompt<string>("Enter [green]API key[/] for all LiteLLM proxy models (or press Enter to clear):").Secret().AllowEmpty());
+
+        if (string.IsNullOrWhiteSpace(apiKey))
+        {
+            apiKey = null;
+        }
+
+        var confirm = AnsiConsole.Confirm($"Apply this API key to all {liteLlmModels.Count} LiteLLM proxy model configurations?");
+        if (!confirm)
+        {
+            AnsiConsole.MarkupLine("[yellow]Operation cancelled.[/]");
+            return;
+        }
+
+        var updatedCount = 0;
+        foreach (var model in liteLlmModels)
+        {
+            model.ApiKey = apiKey;
+            updatedCount++;
+        }
+
+        _userSettingsService.Save(settings);
+
+        var keyStatus = apiKey == null ? "cleared" : "set";
+        AnsiConsole.MarkupLine("[green]API key {0} for {1} LiteLLM proxy model configurations![/]", keyStatus, updatedCount);
+        _logger.LogInformation("Updated API key for {Count} LiteLLM proxy model configurations", updatedCount);
     }
 }

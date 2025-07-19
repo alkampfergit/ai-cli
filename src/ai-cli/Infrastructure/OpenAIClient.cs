@@ -61,7 +61,8 @@ public class OpenAIClient : IAIClient
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("API request failed with status {StatusCode}: {Response}", response.StatusCode, responseBody);
+                _logger.LogError("API request {url} {body} failed with status {StatusCode}: {Response}",
+                     _baseUrl, requestBody, response.StatusCode, responseBody);
                 return new AIResponse
                 {
                     Content = "",

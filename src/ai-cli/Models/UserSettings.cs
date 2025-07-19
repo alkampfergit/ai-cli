@@ -3,6 +3,22 @@ using AiCli.Attributes;
 namespace AiCli.Models;
 
 /// <summary>
+/// Enum representing the type of model configuration
+/// </summary>
+public enum ModelType
+{
+    /// <summary>
+    /// Generic model configuration
+    /// </summary>
+    Generic,
+
+    /// <summary>
+    /// LiteLLM proxy model configuration
+    /// </summary>
+    LiteLlmProxy
+}
+
+/// <summary>
 /// POCO class representing model configuration
 /// </summary>
 public class ModelConfiguration
@@ -16,6 +32,11 @@ public class ModelConfiguration
     /// Display name for the model configuration
     /// </summary>
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Type of model configuration
+    /// </summary>
+    public ModelType Type { get; set; } = ModelType.Generic;
 
     /// <summary>
     /// API key for the AI service
@@ -53,24 +74,6 @@ public class ModelConfiguration
     /// </summary>
     public bool Stream { get; set; } = false;
 
-    /// <summary>
-    /// Creates a new instance with default values
-    /// </summary>
-    public static ModelConfiguration CreateDefault()
-    {
-        return new ModelConfiguration
-        {
-            Id = "default",
-            Name = "Default OpenAI Configuration",
-            ApiKey = null,
-            BaseUrl = null,
-            Model = "gpt-3.5-turbo",
-            Temperature = 1.0f,
-            MaxTokens = null,
-            Format = "text",
-            Stream = false
-        };
-    }
 }
 
 /// <summary>
@@ -86,7 +89,7 @@ public class UserSettings
     /// <summary>
     /// Default model configuration ID to use
     /// </summary>
-    public string DefaultModelConfigurationId { get; set; } = "default";
+    public string DefaultModelConfigurationId { get; set; } = string.Empty;
 
     /// <summary>
     /// Refresh interval for settings file monitoring (in seconds)
@@ -100,11 +103,8 @@ public class UserSettings
     {
         return new UserSettings
         {
-            ModelConfigurations = new List<ModelConfiguration>
-            {
-                ModelConfiguration.CreateDefault()
-            },
-            DefaultModelConfigurationId = "default",
+            ModelConfigurations = new List<ModelConfiguration>(),
+            DefaultModelConfigurationId = string.Empty,
             RefreshInterval = 30
         };
     }

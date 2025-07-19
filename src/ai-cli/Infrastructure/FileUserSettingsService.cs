@@ -61,12 +61,9 @@ internal sealed class FileUserSettingsService : IUserSettingsService
             }
 
             // Ensure we have valid model configurations
-            if (settings.ModelConfigurations == null || settings.ModelConfigurations.Count == 0)
+            if (settings.ModelConfigurations == null)
             {
-                settings.ModelConfigurations = new List<ModelConfiguration>
-                {
-                    ModelConfiguration.CreateDefault()
-                };
+                settings.ModelConfigurations = new List<ModelConfiguration>();
             }
 
             // Ensure non-null values for required properties in model configurations
@@ -89,7 +86,7 @@ internal sealed class FileUserSettingsService : IUserSettingsService
             }
             else
             {
-                settings.DefaultModelConfigurationId = "default";
+                settings.DefaultModelConfigurationId = string.Empty;
             }
 
             // Decrypt encrypted properties

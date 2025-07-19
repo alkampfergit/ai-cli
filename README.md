@@ -190,7 +190,7 @@ The application follows a clean architecture pattern:
 - **Application Layer**: Business logic and service interfaces
 - **Infrastructure Layer**: HTTP client, OpenAI API integration, logging
 
-### Key Components
+### Key ComponentsP
 
 - `Program.cs`: Entry point with dependency injection setup
 - `CommandLineBuilder`: CLI argument parsing and validation

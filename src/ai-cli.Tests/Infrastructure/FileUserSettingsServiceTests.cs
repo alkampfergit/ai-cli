@@ -40,18 +40,9 @@ public class FileUserSettingsServiceTests : IDisposable
         var settings = service.Load();
 
         // Assert
-        settings.ModelConfigurations.Should().HaveCount(1);
-        settings.DefaultModelConfigurationId.Should().Be("default");
+        settings.ModelConfigurations.Should().BeEmpty();
+        settings.DefaultModelConfigurationId.Should().Be(string.Empty);
         settings.RefreshInterval.Should().Be(30);
-
-        var defaultConfig = settings.ModelConfigurations.First();
-        defaultConfig.ApiKey.Should().BeNull();
-        defaultConfig.BaseUrl.Should().BeNull();
-        defaultConfig.Model.Should().Be("gpt-3.5-turbo");
-        defaultConfig.Temperature.Should().Be(1.0f);
-        defaultConfig.MaxTokens.Should().BeNull();
-        defaultConfig.Format.Should().Be("text");
-        defaultConfig.Stream.Should().BeFalse();
     }
 
     [Fact]
@@ -61,18 +52,9 @@ public class FileUserSettingsServiceTests : IDisposable
         var settings = _fileUserSettingsService.ResetToDefault();
 
         // Assert
-        settings.ModelConfigurations.Should().HaveCount(1);
-        settings.DefaultModelConfigurationId.Should().Be("default");
+        settings.ModelConfigurations.Should().BeEmpty();
+        settings.DefaultModelConfigurationId.Should().Be(string.Empty);
         settings.RefreshInterval.Should().Be(30);
-
-        var defaultConfig = settings.ModelConfigurations.First();
-        defaultConfig.ApiKey.Should().BeNull();
-        defaultConfig.BaseUrl.Should().BeNull();
-        defaultConfig.Model.Should().Be("gpt-3.5-turbo");
-        defaultConfig.Temperature.Should().Be(1.0f);
-        defaultConfig.MaxTokens.Should().BeNull();
-        defaultConfig.Format.Should().Be("text");
-        defaultConfig.Stream.Should().BeFalse();
 
         // Verify file was created
         File.Exists(_tempSettingsPath).Should().BeTrue();
@@ -90,6 +72,7 @@ public class FileUserSettingsServiceTests : IDisposable
                 {
                     Id = "test-config",
                     Name = "Test Configuration",
+                    Type = ModelType.Generic,
                     ApiKey = "test-api-key",
                     BaseUrl = "https://api.test.com",
                     Model = "gpt-4",
@@ -130,6 +113,7 @@ public class FileUserSettingsServiceTests : IDisposable
             {
               "id": "loaded-config",
               "name": "Loaded Configuration",
+              "type": 0,
               "apiKey": "loaded-api-key",
               "baseUrl": "https://api.loaded.com",
               "model": "gpt-4",
@@ -175,13 +159,9 @@ public class FileUserSettingsServiceTests : IDisposable
         var settings = _fileUserSettingsService.Load();
 
         // Assert
-        settings.ModelConfigurations.Should().HaveCount(1);
-        settings.DefaultModelConfigurationId.Should().Be("default");
+        settings.ModelConfigurations.Should().BeEmpty();
+        settings.DefaultModelConfigurationId.Should().Be(string.Empty);
         settings.RefreshInterval.Should().Be(30);
-
-        var defaultConfig = settings.ModelConfigurations.First();
-        defaultConfig.Model.Should().Be("gpt-3.5-turbo");
-        defaultConfig.Format.Should().Be("text");
     }
 
     [Fact]
@@ -194,13 +174,9 @@ public class FileUserSettingsServiceTests : IDisposable
         var settings = _fileUserSettingsService.Load();
 
         // Assert
-        settings.ModelConfigurations.Should().HaveCount(1);
-        settings.DefaultModelConfigurationId.Should().Be("default");
+        settings.ModelConfigurations.Should().BeEmpty();
+        settings.DefaultModelConfigurationId.Should().Be(string.Empty);
         settings.RefreshInterval.Should().Be(30);
-
-        var defaultConfig = settings.ModelConfigurations.First();
-        defaultConfig.Model.Should().Be("gpt-3.5-turbo");
-        defaultConfig.Format.Should().Be("text");
     }
 
     [Fact]
@@ -242,13 +218,13 @@ public class FileUserSettingsServiceTests : IDisposable
     }
 
     [Fact]
-    public void Load_WithEmptyModelConfigurations_ShouldCreateDefaultConfiguration()
+    public void Load_WithEmptyModelConfigurations_ShouldKeepEmptyConfigurations()
     {
         // Arrange
         var jsonContent = """
         {
           "modelConfigurations": [],
-          "defaultModelConfigurationId": "default",
+          "defaultModelConfigurationId": "",
           "refreshInterval": 60
         }
         """;
@@ -258,12 +234,9 @@ public class FileUserSettingsServiceTests : IDisposable
         var settings = _fileUserSettingsService.Load();
 
         // Assert
-        settings.ModelConfigurations.Should().HaveCount(1);
-        settings.DefaultModelConfigurationId.Should().Be("default");
-
-        var config = settings.ModelConfigurations.First();
-        config.Id.Should().Be("default");
-        config.Model.Should().Be("gpt-3.5-turbo");
+        settings.ModelConfigurations.Should().BeEmpty();
+        settings.DefaultModelConfigurationId.Should().Be(string.Empty);
+        settings.RefreshInterval.Should().Be(60);
     }
 
     [Fact]
@@ -328,6 +301,7 @@ public class FileUserSettingsServiceTests : IDisposable
                 {
                     Id = "test-config",
                     Name = "Test Configuration",
+                    Type = ModelType.Generic,
                     ApiKey = "secret-api-key-123",
                     Model = "gpt-4"
                 }

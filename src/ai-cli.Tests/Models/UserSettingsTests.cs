@@ -14,7 +14,7 @@ public class UserSettingsTests
         // Assert
         settings.ModelConfigurations.Should().NotBeNull();
         settings.ModelConfigurations.Should().BeEmpty();
-        settings.DefaultModelConfigurationId.Should().Be("default");
+        settings.DefaultModelConfigurationId.Should().Be(string.Empty);
         settings.RefreshInterval.Should().Be(30);
     }
 
@@ -26,14 +26,9 @@ public class UserSettingsTests
 
         // Assert
         settings.ModelConfigurations.Should().NotBeNull();
-        settings.ModelConfigurations.Should().HaveCount(1);
-        settings.DefaultModelConfigurationId.Should().Be("default");
+        settings.ModelConfigurations.Should().BeEmpty();
+        settings.DefaultModelConfigurationId.Should().Be(string.Empty);
         settings.RefreshInterval.Should().Be(30);
-
-        var defaultConfig = settings.ModelConfigurations.First();
-        defaultConfig.Id.Should().Be("default");
-        defaultConfig.Name.Should().Be("Default OpenAI Configuration");
-        defaultConfig.Model.Should().Be("gpt-3.5-turbo");
     }
 
     [Fact]
@@ -170,6 +165,7 @@ public class ModelConfigurationTests
         // Assert
         config.Id.Should().Be(string.Empty);
         config.Name.Should().Be(string.Empty);
+        config.Type.Should().Be(ModelType.Generic);
         config.ApiKey.Should().BeNull();
         config.BaseUrl.Should().BeNull();
         config.Model.Should().Be("gpt-3.5-turbo");
@@ -179,23 +175,6 @@ public class ModelConfigurationTests
         config.Stream.Should().BeFalse();
     }
 
-    [Fact]
-    public void CreateDefault_ShouldReturnInstanceWithDefaults()
-    {
-        // Act
-        var config = ModelConfiguration.CreateDefault();
-
-        // Assert
-        config.Id.Should().Be("default");
-        config.Name.Should().Be("Default OpenAI Configuration");
-        config.ApiKey.Should().BeNull();
-        config.BaseUrl.Should().BeNull();
-        config.Model.Should().Be("gpt-3.5-turbo");
-        config.Temperature.Should().Be(1.0f);
-        config.MaxTokens.Should().BeNull();
-        config.Format.Should().Be("text");
-        config.Stream.Should().BeFalse();
-    }
 
     [Fact]
     public void Properties_ShouldBeSettableAndGettable()
@@ -206,6 +185,7 @@ public class ModelConfigurationTests
         // Act
         config.Id = "test-config";
         config.Name = "Test Configuration";
+        config.Type = ModelType.LiteLlmProxy;
         config.ApiKey = "test-key";
         config.BaseUrl = "https://api.test.com";
         config.Model = "gpt-4";
@@ -217,6 +197,7 @@ public class ModelConfigurationTests
         // Assert
         config.Id.Should().Be("test-config");
         config.Name.Should().Be("Test Configuration");
+        config.Type.Should().Be(ModelType.LiteLlmProxy);
         config.ApiKey.Should().Be("test-key");
         config.BaseUrl.Should().Be("https://api.test.com");
         config.Model.Should().Be("gpt-4");
