@@ -1,7 +1,8 @@
 {
   "profiles": {
     "ai-cli": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "commandLineArgs": "-p \"Ciao chi sei\" -m claude-sonnet-4"
     }
   }
 }
