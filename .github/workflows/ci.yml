@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop, feature/*, hotfix/*, bugfix/* ]
+    branches: [ main, develop, feature/*, hotfix/*, bugfix/*, release/* ]
   pull_request:
     branches: [ main, develop ]
 
@@ -71,6 +71,9 @@ jobs:
     needs: [test, version]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/hotfix/') || startsWith(github.ref, 'refs/heads/release/')
+    strategy:
+      matrix:
+        platform: ['win-x64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64']
     steps:
     - uses: actions/checkout@v4
       with:
@@ -87,43 +90,43 @@ jobs:
         dotnet-version: '9.0.x'
     - name: Restore dependencies
       run: dotnet restore src/ai-cli.sln
-    - name: Build and publish for multiple platforms
+    - name: Build and publish for ${{ matrix.platform }}
       run: |
-        platforms=("win-x64" "linux-x64" "osx-x64")
         version="${{ needs.version.outputs.semVer }}"
-        for platform in "${platforms[@]}"; do
-          echo "Building for $platform..."
-          dotnet publish src/ai-cli/ai-cli.csproj \
-            --configuration Release \
-            --runtime $platform \
-            --self-contained true \
-            --output publish/$platform \
-            /p:PublishSingleFile=true \
-            /p:PublishTrimmed=true \
-            /p:TrimmerDefaultAction=link \
-            /p:Version=${{ needs.version.outputs.assemblySemFileVer }} \
-            /p:AssemblyVersion=${{ needs.version.outputs.assemblySemVer }} \
-            /p:FileVersion=${{ needs.version.outputs.assemblySemFileVer }} \
-            /p:InformationalVersion=${{ needs.version.outputs.informationalVersion }}
-          # Create zip files for each platform
-          cd publish/$platform
-          if [[ "$platform" == "win-x64" ]]; then
-            zip -r ../ai-cli-$version-$platform.zip ai-cli.exe
-          else
-            zip -r ../ai-cli-$version-$platform.zip ai-cli
-          fi
-          cd ../..
-        done
+        platform="${{ matrix.platform }}"
+        echo "Building for $platform..."
+        dotnet publish src/ai-cli/ai-cli.csproj \
+          --configuration Release \
+          --runtime $platform \
+          --self-contained true \
+          --output publish/$platform \
+          /p:PublishSingleFile=true \
+          /p:Version=${{ needs.version.outputs.assemblySemFileVer }} \
+          /p:AssemblyVersion=${{ needs.version.outputs.assemblySemVer }} \
+          /p:FileVersion=${{ needs.version.outputs.assemblySemFileVer }} \
+          /p:InformationalVersion=${{ needs.version.outputs.informationalVersion }}
+        # Create zip files for each platform
+        cd publish/$platform
+        if [[ "$platform" == "win-x64" ]]; then
+          zip -r ../ai-cli-$version-$platform.zip ai-cli.exe
+        else
+          zip -r ../ai-cli-$version-$platform.zip ai-cli
+        fi
+        cd ../..
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ai-cli-binaries
+        name: ai-cli-binary-${{ matrix.platform }}
         path: publish/*.zip
 
   release:
     needs: [build, version]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/hotfix/') || startsWith(github.ref, 'refs/heads/release/')
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
     steps:
     - uses: actions/checkout@v4
       with:
@@ -131,8 +134,13 @@ jobs:
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with:
-        name: ai-cli-binaries
+        pattern: ai-cli-binary-*
         path: publish/
+        merge-multiple: true
+    - name: Attest artifacts
+      uses: actions/attest-build-provenance@v1
+      with:
+        subject-path: 'publish/*.zip'
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
@@ -146,18 +154,29 @@ jobs:
           ## Download
           
           Choose the appropriate binary for your platform:
-          - **Windows**: ai-cli-${{ needs.version.outputs.semVer }}-win-x64.zip
-          - **Linux**: ai-cli-${{ needs.version.outputs.semVer }}-linux-x64.zip
-          - **macOS**: ai-cli-${{ needs.version.outputs.semVer }}-osx-x64.zip
+          - **Windows x64**: ai-cli-${{ needs.version.outputs.semVer }}-win-x64.zip
+          - **Linux x64**: ai-cli-${{ needs.version.outputs.semVer }}-linux-x64.zip
+          - **Linux ARM64**: ai-cli-${{ needs.version.outputs.semVer }}-linux-arm64.zip
+          - **macOS x64 (Intel)**: ai-cli-${{ needs.version.outputs.semVer }}-osx-x64.zip
+          - **macOS ARM64 (Apple Silicon)**: ai-cli-${{ needs.version.outputs.semVer }}-osx-arm64.zip
           
           ## Version Information
           - **Version**: ${{ needs.version.outputs.semVer }}
           - **Commit**: ${{ github.sha }}
           - **Build**: ${{ github.run_number }}
+          
+          ## Security & Attestation
+          All release artifacts are signed with GitHub's build provenance attestation. You can verify the integrity and authenticity of the binaries using the [GitHub CLI](https://cli.github.com/):
+          
+          ```bash
+          gh attestation verify <downloaded-file> --repo alkampfergit/ai-cli
+          ```
         draft: false
         prerelease: false
         files: |
           ./publish/ai-cli-${{ needs.version.outputs.semVer }}-win-x64.zip
           ./publish/ai-cli-${{ needs.version.outputs.semVer }}-linux-x64.zip
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-linux-arm64.zip
           ./publish/ai-cli-${{ needs.version.outputs.semVer }}-osx-x64.zip
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-osx-arm64.zip
         token: ${{ secrets.GITHUB_TOKEN }}
