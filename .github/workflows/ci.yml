@@ -1,0 +1,182 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop, feature/*, hotfix/*, bugfix/*, release/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  version:                    # NEW – single-run GitVersion
+    runs-on: ubuntu-latest
+    outputs:
+      fullSemVer: ${{ steps.gitversion.outputs.fullSemVer }}
+      semVer: ${{ steps.gitversion.outputs.semVer }}
+      assemblySemVer: ${{ steps.gitversion.outputs.assemblySemVer }}
+      assemblySemFileVer: ${{ steps.gitversion.outputs.assemblySemFileVer }}
+      informationalVersion: ${{ steps.gitversion.outputs.informationalVersion }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0               # required for GitVersion
+    - name: Install GitVersion
+      uses: gittools/actions/gitversion/setup@v0.10.2
+      with:
+        versionSpec: '5.x'
+    - name: Determine Version
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v0.10.2
+      with:
+        useConfigFile: true
+        configFilePath: GitVersion.yml
+
+  test:
+    needs: version                 # depend on version job
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        dotnet-version: ['9.0.x']
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Cache NuGet
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: ${{ runner.os }}-nuget-
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ matrix.dotnet-version }}
+    - name: Restore dependencies
+      run: dotnet restore src/ai-cli.sln
+    - name: Build
+      run: dotnet build src/ai-cli.sln --configuration Release --no-restore /p:Version=${{ needs.version.outputs.assemblySemFileVer }} /p:AssemblyVersion=${{ needs.version.outputs.assemblySemVer }} /p:FileVersion=${{ needs.version.outputs.assemblySemFileVer }} /p:InformationalVersion=${{ needs.version.outputs.informationalVersion }}
+    
+    - name: Run tests
+      run: dotnet test src/ai-cli.sln --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v4
+      if: matrix.os == 'ubuntu-latest'
+      with:
+        files: './coverage/**/coverage.cobertura.xml'
+        fail_ci_if_error: false
+
+  build:
+    needs: [test, version]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/hotfix/') || startsWith(github.ref, 'refs/heads/release/')
+    strategy:
+      matrix:
+        platform: ['win-x64', 'linux-x64', 'linux-arm64', 'osx-x64', 'osx-arm64']
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Cache NuGet
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: linux-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: linux-nuget-
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+    - name: Restore dependencies
+      run: dotnet restore src/ai-cli.sln
+    - name: Build and publish for ${{ matrix.platform }}
+      run: |
+        version="${{ needs.version.outputs.semVer }}"
+        platform="${{ matrix.platform }}"
+        echo "Building for $platform..."
+        dotnet publish src/ai-cli/ai-cli.csproj \
+          --configuration Release \
+          --runtime $platform \
+          --self-contained true \
+          --output publish/$platform \
+          /p:PublishSingleFile=true \
+          /p:Version=${{ needs.version.outputs.assemblySemFileVer }} \
+          /p:AssemblyVersion=${{ needs.version.outputs.assemblySemVer }} \
+          /p:FileVersion=${{ needs.version.outputs.assemblySemFileVer }} \
+          /p:InformationalVersion=${{ needs.version.outputs.informationalVersion }}
+        # Create zip files for each platform
+        cd publish/$platform
+        if [[ "$platform" == "win-x64" ]]; then
+          zip -r ../ai-cli-$version-$platform.zip ai-cli.exe
+        else
+          zip -r ../ai-cli-$version-$platform.zip ai-cli
+        fi
+        cd ../..
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ai-cli-binary-${{ matrix.platform }}
+        path: publish/*.zip
+
+  release:
+    needs: [build, version]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/heads/master') || startsWith(github.ref, 'refs/heads/hotfix/') || startsWith(github.ref, 'refs/heads/release/')
+    permissions:
+      contents: write
+      attestations: write
+      id-token: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: ai-cli-binary-*
+        path: publish/
+        merge-multiple: true
+    - name: Attest artifacts
+      uses: actions/attest-build-provenance@v1
+      with:
+        subject-path: 'publish/*.zip'
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ needs.version.outputs.semVer }}
+        name: Release v${{ needs.version.outputs.semVer }}
+        body: |
+          ## Changes
+          
+          This release was automatically generated from the latest changes in the master branch.
+          
+          ## Download
+          
+          Choose the appropriate binary for your platform:
+          - **Windows x64**: ai-cli-${{ needs.version.outputs.semVer }}-win-x64.zip
+          - **Linux x64**: ai-cli-${{ needs.version.outputs.semVer }}-linux-x64.zip
+          - **Linux ARM64**: ai-cli-${{ needs.version.outputs.semVer }}-linux-arm64.zip
+          - **macOS x64 (Intel)**: ai-cli-${{ needs.version.outputs.semVer }}-osx-x64.zip
+          - **macOS ARM64 (Apple Silicon)**: ai-cli-${{ needs.version.outputs.semVer }}-osx-arm64.zip
+          
+          ## Version Information
+          - **Version**: ${{ needs.version.outputs.semVer }}
+          - **Commit**: ${{ github.sha }}
+          - **Build**: ${{ github.run_number }}
+          
+          ## Security & Attestation
+          All release artifacts are signed with GitHub's build provenance attestation. You can verify the integrity and authenticity of the binaries using the [GitHub CLI](https://cli.github.com/):
+          
+          ```bash
+          gh attestation verify <downloaded-file> --repo alkampfergit/ai-cli
+          ```
+        draft: false
+        prerelease: false
+        files: |
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-win-x64.zip
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-linux-x64.zip
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-linux-arm64.zip
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-osx-x64.zip
+          ./publish/ai-cli-${{ needs.version.outputs.semVer }}-osx-arm64.zip
+        token: ${{ secrets.GITHUB_TOKEN }}
