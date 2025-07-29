@@ -123,4 +123,192 @@ public class CommandLineBuilderTests
         parseResult.Errors.Should().HaveCount(1);
         parseResult.Errors[0].Message.Should().Contain("Format must be 'text' or 'json'");
     }
+
+    [Fact]
+    public void ParseOptions_WithForwardSlashPrompt_ShouldParseCorrectly()
+    {
+        // Arrange
+        var rootCommand = CommandLineBuilder.CreateRootCommand();
+        var args = new[] { "/p", "Hello with forward slash!", "--model", "gpt-4" };
+        var parseResult = rootCommand.Parse(args);
+
+        // Act
+        var options = CommandLineBuilder.ParseOptions(parseResult);
+
+        // Assert
+        options.Prompt.Should().Be("Hello with forward slash!");
+        options.Model.Should().Be("gpt-4");
+        options.FilePath.Should().BeNull();
+        options.UseStdin.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ParseOptions_WithForwardSlashFile_ShouldParseCorrectly()
+    {
+        // Arrange
+        var rootCommand = CommandLineBuilder.CreateRootCommand();
+        var args = new[] { "/f", "prompt.txt", "--temperature", "0.5" };
+        var parseResult = rootCommand.Parse(args);
+
+        // Act
+        var options = CommandLineBuilder.ParseOptions(parseResult);
+
+        // Assert
+        options.FilePath.Should().Be("prompt.txt");
+        options.Temperature.Should().Be(0.5f);
+        options.Prompt.Should().BeNull();
+        options.UseStdin.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ParseOptions_WithForwardSlashModel_ShouldParseCorrectly()
+    {
+        // Arrange
+        var rootCommand = CommandLineBuilder.CreateRootCommand();
+        var args = new[] { "--prompt", "Test", "/m", "gpt-4" };
+        var parseResult = rootCommand.Parse(args);
+
+        // Act
+        var options = CommandLineBuilder.ParseOptions(parseResult);
+
+        // Assert
+        options.Prompt.Should().Be("Test");
+        options.Model.Should().Be("gpt-4");
+    }
+
+    [Fact]
+    public void ParseOptions_WithForwardSlashOutput_ShouldParseCorrectly()
+    {
+        // Arrange
+        var rootCommand = CommandLineBuilder.CreateRootCommand();
+        var args = new[] { "--prompt", "Test", "/o", "output.txt" };
+        var parseResult = rootCommand.Parse(args);
+
+        // Act
+        var options = CommandLineBuilder.ParseOptions(parseResult);
+
+        // Assert
+        options.Prompt.Should().Be("Test");
+        options.OutputFile.Should().Be("output.txt");
+    }
+
+    [Fact]
+    public void ParseOptions_WithAllForwardSlashOptions_ShouldParseCorrectly()
+    {
+        // Arrange
+        var rootCommand = CommandLineBuilder.CreateRootCommand();
+        var args = new[]
+        {
+            "/p", "Test prompt with forward slash",
+            "/m", "gpt-4",
+            "/o", "output.txt"
+        };
+        var parseResult = rootCommand.Parse(args);
+
+        // Act
+        var options = CommandLineBuilder.ParseOptions(parseResult);
+
+        // Assert
+        options.Prompt.Should().Be("Test prompt with forward slash");
+        options.Model.Should().Be("gpt-4");
+        options.OutputFile.Should().Be("output.txt");
+        options.UseStdin.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ParseOptions_WithMixedSyntax_ShouldParseCorrectly()
+    {
+        // Arrange
+        var rootCommand = CommandLineBuilder.CreateRootCommand();
+        var args = new[]
+        {
+            "/p", "Test prompt",
+            "-m", "gpt-4",
+            "--output-file", "output.txt"
+        };
+        var parseResult = rootCommand.Parse(args);
+
+        // Act
+        var options = CommandLineBuilder.ParseOptions(parseResult);
+
+        // Assert
+        options.Prompt.Should().Be("Test prompt");
+        options.Model.Should().Be("gpt-4");
+        options.OutputFile.Should().Be("output.txt");
+        options.UseStdin.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("-p", "Test with dash")]
+    [InlineData("/p", "Test with forward slash")]
+    [InlineData("--prompt", "Test with long form")]
+    public void ParseOptions_AllPromptSyntaxVariations_ShouldParseCorrectly(string optionSyntax, string expectedValue)
+    {
+        // Arrange
+        var rootCommand = CommandLineBuilder.CreateRootCommand();
+        var args = new[] { optionSyntax, expectedValue };
+        var parseResult = rootCommand.Parse(args);
+
+        // Act
+        var options = CommandLineBuilder.ParseOptions(parseResult);
+
+        // Assert
+        options.Prompt.Should().Be(expectedValue);
+        options.UseStdin.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("-f", "file.txt")]
+    [InlineData("/f", "file.txt")]
+    [InlineData("--file", "file.txt")]
+    public void ParseOptions_AllFileSyntaxVariations_ShouldParseCorrectly(string optionSyntax, string expectedValue)
+    {
+        // Arrange
+        var rootCommand = CommandLineBuilder.CreateRootCommand();
+        var args = new[] { optionSyntax, expectedValue };
+        var parseResult = rootCommand.Parse(args);
+
+        // Act
+        var options = CommandLineBuilder.ParseOptions(parseResult);
+
+        // Assert
+        options.FilePath.Should().Be(expectedValue);
+        options.UseStdin.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("-m", "gpt-4")]
+    [InlineData("/m", "gpt-4")]
+    [InlineData("--model", "gpt-4")]
+    public void ParseOptions_AllModelSyntaxVariations_ShouldParseCorrectly(string optionSyntax, string expectedValue)
+    {
+        // Arrange
+        var rootCommand = CommandLineBuilder.CreateRootCommand();
+        var args = new[] { "--prompt", "Test", optionSyntax, expectedValue };
+        var parseResult = rootCommand.Parse(args);
+
+        // Act
+        var options = CommandLineBuilder.ParseOptions(parseResult);
+
+        // Assert
+        options.Model.Should().Be(expectedValue);
+    }
+
+    [Theory]
+    [InlineData("-o", "output.txt")]
+    [InlineData("/o", "output.txt")]
+    [InlineData("--output-file", "output.txt")]
+    public void ParseOptions_AllOutputSyntaxVariations_ShouldParseCorrectly(string optionSyntax, string expectedValue)
+    {
+        // Arrange
+        var rootCommand = CommandLineBuilder.CreateRootCommand();
+        var args = new[] { "--prompt", "Test", optionSyntax, expectedValue };
+        var parseResult = rootCommand.Parse(args);
+
+        // Act
+        var options = CommandLineBuilder.ParseOptions(parseResult);
+
+        // Assert
+        options.OutputFile.Should().Be(expectedValue);
+    }
 }

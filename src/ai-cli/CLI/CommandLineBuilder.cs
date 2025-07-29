@@ -18,16 +18,16 @@ public static class CommandLineBuilder
 
         // Prompt options (mutually exclusive)
         var promptOption = new Option<string?>(
-            aliases: new[] { "--prompt", "-p" },
+            aliases: new[] { "--prompt", "-p", "/p" },
             description: "Prompt text to send to the AI service");
 
         var fileOption = new Option<string?>(
-            aliases: new[] { "--file", "-f" },
+            aliases: new[] { "--file", "-f", "/f" },
             description: "Path to file containing the prompt");
 
         // Model and generation options
         var modelOption = new Option<string>(
-            aliases: new[] { "--model", "-m" },
+            aliases: new[] { "--model", "-m", "/m" },
             getDefaultValue: () => "gpt-3.5-turbo",
             description: "AI model to use");
 
@@ -43,7 +43,7 @@ public static class CommandLineBuilder
 
         // Output options
         var outputFileOption = new Option<string?>(
-            aliases: new[] { "--output-file", "-o" },
+            aliases: new[] { "--output-file", "-o", "/o" },
             description: "Save response to file");
 
         var formatOption = new Option<string>(
@@ -127,12 +127,12 @@ public static class CommandLineBuilder
     public static CliOptions ParseOptions(System.CommandLine.Parsing.ParseResult result)
     {
         // Extract values by checking if the option token was provided
-        var promptValue = GetOptionValue<string>(result, "--prompt", "-p");
-        var fileValue = GetOptionValue<string>(result, "--file", "-f");
-        var modelValue = GetOptionValue<string>(result, "--model", "-m") ?? "gpt-3.5-turbo";
+        var promptValue = GetOptionValue<string>(result, "--prompt", "-p", "/p");
+        var fileValue = GetOptionValue<string>(result, "--file", "-f", "/f");
+        var modelValue = GetOptionValue<string>(result, "--model", "-m", "/m") ?? "gpt-3.5-turbo";
         var temperatureValue = GetOptionValue<float?>(result, "--temperature") ?? 1.0f;
         var maxTokensValue = GetOptionValue<int?>(result, "--max-tokens");
-        var outputFileValue = GetOptionValue<string>(result, "--output-file", "-o");
+        var outputFileValue = GetOptionValue<string>(result, "--output-file", "-o", "/o");
         var formatValue = GetOptionValue<string>(result, "--format") ?? "text";
         var streamValue = GetOptionValue<bool?>(result, "--stream") ?? false;
         var configValue = GetOptionValue<bool>(result, "--config");
@@ -160,13 +160,16 @@ public static class CommandLineBuilder
     /// <param name="result">Parse result</param>
     /// <param name="optionName">Option name</param>
     /// <param name="shortName">Optional short name</param>
+    /// <param name="altShortName">Optional alternative short name</param>
     /// <returns>Option value if found, otherwise default</returns>
-    private static T? GetOptionValue<T>(System.CommandLine.Parsing.ParseResult result, string optionName, string? shortName = null)
+    private static T? GetOptionValue<T>(System.CommandLine.Parsing.ParseResult result, string optionName, string? shortName = null, string? altShortName = null)
     {
         // Check if the option token was provided in the parsed tokens
         var tokens = result.Tokens.Select(t => t.Value).ToList();
 
-        bool hasOption = tokens.Contains(optionName) || (shortName != null && tokens.Contains(shortName));
+        bool hasOption = tokens.Contains(optionName) || 
+                        (shortName != null && tokens.Contains(shortName)) ||
+                        (altShortName != null && tokens.Contains(altShortName));
 
         if (!hasOption)
         {
@@ -178,6 +181,10 @@ public static class CommandLineBuilder
         if (optionIndex == -1 && shortName != null)
         {
             optionIndex = tokens.IndexOf(shortName);
+        }
+        if (optionIndex == -1 && altShortName != null)
+        {
+            optionIndex = tokens.IndexOf(altShortName);
         }
 
         // For bool options, presence means true

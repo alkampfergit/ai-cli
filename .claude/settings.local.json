@@ -17,7 +17,8 @@
       "Bash(dotnet format:*)",
       "Bash(dotnet tool list:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "WebFetch(domain:learn.microsoft.com)"
     ],
     "deny": []
   }
