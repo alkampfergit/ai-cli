@@ -41,7 +41,37 @@ internal class Program
                 Environment.ExitCode = await HandleCommandAsync(context.ParseResult, cancellationTokenSource.Token);
             });
 
-            await rootCommand.InvokeAsync(args);
+            // Check for help first
+            if (args.Contains("--help") || args.Contains("-h") || args.Contains("/?"))
+            {
+                await rootCommand.InvokeAsync(args);
+                return Environment.ExitCode;
+            }
+
+            var parseResult = rootCommand.Parse(args);
+            
+            // Check for parsing errors and provide detailed argument information
+            if (parseResult.Errors.Count > 0)
+            {
+                Console.Error.WriteLine("Error parsing command line arguments:");
+                foreach (var error in parseResult.Errors)
+                {
+                    Console.Error.WriteLine($"  {error.Message}");
+                }
+                
+                Console.Error.WriteLine();
+                Console.Error.WriteLine($"Total arguments received: {args.Length}");
+                for (int i = 0; i < args.Length; i++)
+                {
+                    Console.Error.WriteLine($"  Arg[{i}]: '{args[i]}'");
+                }
+                
+                Console.Error.WriteLine();
+                Console.Error.WriteLine("Use --help to see available options.");
+                return ExitCodes.InvalidArguments;
+            }
+
+            Environment.ExitCode = await HandleCommandAsync(parseResult, cancellationTokenSource.Token);
             return Environment.ExitCode;
         }
         catch (Exception ex)
