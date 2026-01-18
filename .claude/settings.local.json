@@ -18,7 +18,12 @@
       "Bash(dotnet tool list:*)",
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
-      "WebFetch(domain:learn.microsoft.com)"
+      "WebFetch(domain:learn.microsoft.com)",
+      "Bash(git config:*)",
+      "Bash(git lfs ls-files:*)",
+      "Bash(git push:*)",
+      "Bash(sudo apt-get update:*)",
+      "Bash(sudo apt-get install:*)"
     ],
     "deny": []
   }
