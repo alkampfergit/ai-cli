@@ -23,7 +23,10 @@
       "Bash(git lfs ls-files:*)",
       "Bash(git push:*)",
       "Bash(sudo apt-get update:*)",
-      "Bash(sudo apt-get install:*)"
+      "Bash(sudo apt-get install:*)",
+      "Bash(curl:*)",
+      "Bash(bash)",
+      "Bash(bd --version:*)"
     ],
     "deny": []
   }

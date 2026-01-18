@@ -30,7 +30,7 @@
 	},
 	"containerEnv": {
 	},
-	"postCreateCommand": "sudo apt-get update && sudo apt-get install -y git-flow git-lfs && git lfs install"
+	"postCreateCommand": "sudo apt-get update && sudo apt-get install -y git-flow git-lfs && git lfs install && curl -fsSL https://raw.githubusercontent.com/steveyegge/beads/main/scripts/install.sh | bash"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
