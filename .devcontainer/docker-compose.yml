@@ -2,10 +2,17 @@ version: '3.8'
 
 services:
   app:
-    image: mcr.microsoft.com/devcontainers/dotnet:1-10.0
+    build:
+      context: .
+      dockerfile: Dockerfile
     volumes:
-      - ".:/workspace:cached"
+      # Paths are relative to this compose file (.devcontainer/), so ".." is the repo root.
+      - "..:/workspace:cached"
     command: sleep infinity
+    # Equivalent of the node container's runArgs (runArgs is ignored under compose).
+    security_opt:
+      - seccomp=unconfined
+      - apparmor=unconfined
     networks:
       - app-network
 
