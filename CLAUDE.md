@@ -164,3 +164,8 @@ Structured logging with Serilog:
 - **File**: Debug level and above, 7-day retention
 - **Location**: `~/.ai-cli/ai-cli.log`
 - **Security**: API keys and sensitive data are not logged
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
